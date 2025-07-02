@@ -2,45 +2,51 @@
 
 """
 Configuration file for the VICReg model, training, and evaluation.
-
-This file centralizes all hyperparameters and settings to allow for easy
-adjustments and to ensure consistency across different parts of the project.
+Includes settings for both centralized and federated learning.
 """
+
+# --- Training Mode ---
+TRAINING_MODE = 'centralized' # Can be 'centralized' or 'federated'
 
 # --- Device Configuration ---
 DEVICE = "cuda"  # Use "cuda" if a GPU is available, otherwise "cpu"
 
+# --- Federated Learning Parameters ---
+# These are only used if TRAINING_MODE is 'federated'
+NUM_AGENTS = 10               # Number of agents in the network
+COMMUNICATION_ROUNDS = 50     # Number of federated training rounds
+NON_IID_ALPHA = 0.5           # Dirichlet distribution alpha for non-IID split
+                              # Smaller alpha = more non-IID
+
 # --- Model Parameters ---
-# Configuration for the ResNet-18 backbone and VICReg projection head
 BACKBONE_MODEL = "resnet18"
-PROJECTION_INPUT_DIM = 512  # Output dimension of ResNet-18 backbone
-PROJECTION_HIDDEN_DIM = 2048 # Hidden dimension of the projection head
-PROJECTION_OUTPUT_DIM = 2048 # Final output dimension of the projection head
+PROJECTION_INPUT_DIM = 512
+PROJECTION_HIDDEN_DIM = 2048
+PROJECTION_OUTPUT_DIM = 2048
 
 # --- Pre-training Parameters ---
-# Settings for the self-supervised pre-training phase
-PRETRAIN_EPOCHS = 200 # Number of epochs for self-supervised learning
-BATCH_SIZE = 256      # Batch size for pre-training and evaluation
-NUM_WORKERS = 2       # Number of workers for the DataLoader
+# For 'centralized', this is the total number of epochs.
+# For 'federated', this is the number of local epochs per round.
+EPOCHS = 1 # Changed from LOCAL_EPOCHS for clarity
+CENTRALIZED_EPOCHS = 200 # Total epochs for centralized training
+
+# --- General Training Parameters ---
+BATCH_SIZE = 256
+NUM_WORKERS = 2
 
 # --- VICReg Loss Hyperparameters ---
-# Coefficients for the different components of the VICReg loss function
-# lambda and mu control the weight of the invariance and variance terms
 LAMBDA = 32.0
 MU = 32.0
-NU = 1.0  # nu controls the covariance term, typically fixed at 1.0
+NU = 1.0
 
 # --- Evaluation Parameters ---
-# Settings for the linear and kNN evaluation phases
-EVAL_EPOCHS = 50       # Number of epochs for training the linear classifier
-KNN_K = 200            # Number of nearest neighbors for kNN evaluation
-KNN_TEMPERATURE = 0.1  # Temperature scaling for kNN similarity matrix
+EVAL_EPOCHS = 50
+KNN_K = 200
+KNN_TEMPERATURE = 0.1
 
 # --- Dataset Configuration ---
-# Details for the dataset used in pre-training and evaluation
-DATASET_PATH = "datasets/cifar10" # Directory to store the CIFAR-10 dataset
-INPUT_SIZE = 32 # Input image size for CIFAR-10
+DATASET_PATH = "datasets/cifar10"
+INPUT_SIZE = 32
 
 # --- File Paths ---
-# Path for saving the trained model weights
-MODEL_SAVE_PATH = "vicreg_backbone.pth"
+MODEL_SAVE_PATH = "vicreg_backbone.pth" # Filename will be adjusted by the script
