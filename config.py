@@ -2,33 +2,26 @@
 
 """
 Configuration file for the VICReg model, training, and evaluation.
-Includes settings for both centralized and federated learning.
+Supports both centralized and decentralized/federated simulations.
 """
-
-# --- Training Mode ---
-TRAINING_MODE = 'centralized' # Can be 'centralized' or 'federated'
 
 # --- Device Configuration ---
 DEVICE = "cuda"  # Use "cuda" if a GPU is available, otherwise "cpu"
 
-# --- Federated Learning Parameters ---
-# These are only used if TRAINING_MODE is 'federated'
+# --- Simulation Parameters ---
+# To run a centralized simulation, set NUM_AGENTS = 1.
+# The total number of training epochs will be (COMMUNICATION_ROUNDS * LOCAL_EPOCHS).
 NUM_AGENTS = 10               # Number of agents in the network
-COMMUNICATION_ROUNDS = 50     # Number of federated training rounds
+COMMUNICATION_ROUNDS = 50     # Number of training rounds
+LOCAL_EPOCHS = 1              # Number of local epochs per agent per round
 NON_IID_ALPHA = 0.5           # Dirichlet distribution alpha for non-IID split
-                              # Smaller alpha = more non-IID
+                              # Smaller alpha = more non-IID. Not used if NUM_AGENTS = 1.
 
 # --- Model Parameters ---
 BACKBONE_MODEL = "resnet18"
 PROJECTION_INPUT_DIM = 512
 PROJECTION_HIDDEN_DIM = 2048
 PROJECTION_OUTPUT_DIM = 2048
-
-# --- Pre-training Parameters ---
-# For 'centralized', this is the total number of epochs.
-# For 'federated', this is the number of local epochs per round.
-EPOCHS = 1 # Changed from LOCAL_EPOCHS for clarity
-CENTRALIZED_EPOCHS = 200 # Total epochs for centralized training
 
 # --- General Training Parameters ---
 BATCH_SIZE = 256
