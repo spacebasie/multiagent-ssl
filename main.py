@@ -187,7 +187,9 @@ def main():
     plot_filename = f"run_{run_timestamp}_learning_curve.png"
     report_filename = f"run_{run_timestamp}_report.md"  # Changed to .md
 
+    print(f"\n--- Plotting Results ---")
     if eval_points:
+        print(f"\n--- Saving plot ---")
         plot_learning_curve(eval_points, accuracies, filename=plot_filename)
 
     # Run final, detailed evaluations

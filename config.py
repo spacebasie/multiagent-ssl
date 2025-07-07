@@ -33,7 +33,7 @@ MU = 32.0
 NU = 1.0
 
 # --- Evaluation Parameters ---
-EVAL_EPOCHS = 50
+EVAL_EPOCHS = 25
 KNN_K = 200
 KNN_TEMPERATURE = 0.1
 
