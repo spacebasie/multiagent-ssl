@@ -38,7 +38,7 @@ def agent_update(agent_model, agent_dataloader, local_epochs, device):
         for batch in agent_dataloader:
             x0, x1 = batch[0]
             x0, x1 = x0.to(device), x1.to(device)
-            z0, z1 = agent_model(x0), agent_model(z1)
+            z0, z1 = agent_model(x0), agent_model(x1)
             loss = criterion(z0, z1)
             if torch.isnan(loss):
                 print(f"  Warning: NaN loss detected for an agent. Skipping update.")
