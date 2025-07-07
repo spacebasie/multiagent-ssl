@@ -1,0 +1,9 @@
+# This file lists the required packages for the project.
+numpy
+torch
+torchvision
+copy
+argparse
+matplotlib
+datetime
+config
