@@ -88,7 +88,8 @@ def generate_markdown_report(args, linear_acc, knn_acc, plot_filename, report_fi
         f.write(f"| Number of Agents         | {args.num_agents} |\n")
         f.write(f"| Communication Rounds     | {args.comm_rounds} |\n")
         f.write(f"| Local Epochs per Round   | {args.local_epochs} |\n")
-        f.write(f"| Non-IID Alpha            | {args.alpha:.2f if args.num_agents > 1 else 'N/A'} |\n")
+        alpha_value_str = f"{args.alpha:.2f}" if args.num_agents > 1 else "N/A"
+        f.write(f"| Non-IID Alpha            | {alpha_value_str} |\n")
         f.write(f"| Batch Size               | {config.BATCH_SIZE} |\n")
         f.write(f"| VICReg Lambda            | {config.LAMBDA} |\n")
         f.write(f"| VICReg Mu                | {config.MU} |\n\n")
@@ -117,6 +118,7 @@ def parse_arguments():
     parser.add_argument('--comm_rounds', type=int, default=config.COMMUNICATION_ROUNDS)
     parser.add_argument('--local_epochs', type=int, default=config.LOCAL_EPOCHS)
     parser.add_argument('--alpha', type=float, default=config.NON_IID_ALPHA)
+    parser.add_argument('--eval_epochs', type=int, default=config.EVAL_EPOCHS)
     parser.add_argument('--eval_every', type=int, default=5)
 
     # Argument to control saving weights
@@ -189,7 +191,7 @@ def main():
         plot_learning_curve(eval_points, accuracies, filename=plot_filename)
 
     # Run final, detailed evaluations
-    print("\n--- Starting Final, More Detailed Evaluation ---")
+    print("\n--- Starting Final Evaluation ---")
     final_linear_acc = linear_evaluation(global_model, config.PROJECTION_INPUT_DIM, train_loader_eval, test_loader_eval,
                                          config.EVAL_EPOCHS, device)
     final_knn_acc = knn_evaluation(global_model, train_loader_eval, test_loader_eval, device, config.KNN_K,
