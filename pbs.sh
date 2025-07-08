@@ -31,7 +31,7 @@ module load Python/3.10.4-GCCcore-11.3.0
 
 # Activate your specific Python virtual environment.
 echo "Activating virtual environment..."
-source venv/venv25/bin/activate
+source ~/venv/venv25/bin/activate
 
 # Now, run your main Python script.
 # You can pass any command-line arguments here, just like you would on your own machine.
