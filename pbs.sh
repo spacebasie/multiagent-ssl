@@ -27,7 +27,7 @@ echo "Working directory is $(pwd)"
 
 # Load the necessary software modules provided by the cluster.
 echo "Loading modules..."
-module load python/3.10
+module load Python/3.10.4-GCCcore-11.3.0
 
 # Activate your specific Python virtual environment.
 echo "Activating virtual environment..."
