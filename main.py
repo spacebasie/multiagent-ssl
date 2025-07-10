@@ -25,7 +25,9 @@ def agent_update(agent_model, agent_dataloader, local_epochs, device):
     """
     Performs the local training for a single agent and returns the average loss.
     """
+    # Set the criterion for the agent model - VICReg as main - in future potentially try something else too
     criterion = VICRegLoss(lambda_=config.LAMBDA, mu=config.MU, nu=config.NU)
+    # Optimizer is Stochastic Gradient Descent - Keep track of parameters (learning rate, momentum, weight decay)
     optimizer = torch.optim.SGD(agent_model.parameters(), lr=0.001, momentum=0.9, weight_decay=1e-4)
     agent_model.train()
 
@@ -91,8 +93,6 @@ def main():
     )
     # Use a descriptive name for the run
     wandb.run.name = f"agents_{args.num_agents}_alpha_{args.alpha}_rounds_{args.comm_rounds}_epochs_{args.local_epochs}"
-    wandb.run.save()
-
 
     device = config.DEVICE if torch.cuda.is_available() else "cpu"
     print("--- Starting VICReg Experiment with W&B ---")
