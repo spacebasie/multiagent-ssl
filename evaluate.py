@@ -150,3 +150,50 @@ def knn_evaluation(model, train_loader, test_loader, device, k=200, temperature=
     accuracy = 100 * correct / total
     print(f"Final kNN Test Accuracy: {accuracy:.2f}%")
     return accuracy
+
+def log_tsne_plot(model, dataloader, device, epoch):
+    """
+    Generates and logs a t-SNE plot of the backbone's feature representations.
+    """
+    print("--- Generating t-SNE plot ---")
+    model.eval()
+    features_list = []
+    labels_list = []
+    # Use a subset of data to speed up t-SNE generation
+    num_samples = 1000
+    samples_gathered = 0
+
+    with torch.no_grad():
+        for images, labels in dataloader:
+            # Adapt for LightlyDataset format: ((view1, view2), labels, fnames)
+            # For t-SNE, we only need one view and the labels.
+            (images, _), labels, _ = images, labels[0], labels[1]
+            images = images.to(device)
+
+            features = model.forward_backbone(images)
+            features_list.append(features.cpu().numpy())
+            labels_list.append(labels.cpu().numpy())
+
+            samples_gathered += len(images)
+            if samples_gathered >= num_samples:
+                break
+
+    features = np.concatenate(features_list, axis=0)
+    labels = np.concatenate(labels_list, axis=0)
+
+    tsne = TSNE(n_components=2, perplexity=30, learning_rate=200, n_iter=1000, random_state=42)
+    tsne_features = tsne.fit_transform(features)
+
+    fig, ax = plt.subplots(figsize=(12, 12))
+    scatter = ax.scatter(tsne_features[:, 0], tsne_features[:, 1], c=labels, cmap='tab10', alpha=0.7)
+    legend1 = ax.legend(*scatter.legend_elements(), title="Classes")
+    ax.add_artist(legend1)
+    ax.set_title(f"t-SNE of Feature Embeddings at Epoch {epoch}")
+    ax.set_xlabel("t-SNE Dimension 1")
+    ax.set_ylabel("t-SNE Dimension 2")
+
+    # Log the plot to Weights & Biases
+    wandb.log({f"eval/tsne_plot": wandb.Image(fig), "epoch": epoch})
+    plt.close(fig)
+    print("--- t-SNE plot logged to W&B ---")
+
