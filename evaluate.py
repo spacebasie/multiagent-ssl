@@ -1,8 +1,7 @@
 # evaluate.py
 
 """
-Contains functions for evaluating the pre-trained model.
-t-SNE functionality is temporarily removed to resolve dependency issues.
+Contains functions for evaluating the pre-trained model, now with corrected data unpacking.
 """
 
 import torch
@@ -12,6 +11,17 @@ import wandb
 import numpy as np
 import matplotlib.pyplot as plt
 
+
+def _unpack_batch(batch):
+    """
+    Unpacks a batch from either a torchvision or Lightly dataset.
+    torchvision returns (image, label)
+    lightly returns (image, label, fname)
+    """
+    if len(batch) == 3:
+        return batch[0], batch[1] # image, label
+    else:
+        return batch # image, label
 
 def linear_evaluation(model, proj_output_dim, train_loader, test_loader, epochs, device):
     """Runs the linear evaluation protocol on the frozen backbone."""
@@ -25,8 +35,7 @@ def linear_evaluation(model, proj_output_dim, train_loader, test_loader, epochs,
 
     for epoch in range(epochs):
         for batch in train_loader:
-            # Correct unpacking for LightlyDataset: (sample, target, fname)
-            images, labels, _ = batch
+            images, labels = _unpack_batch(batch)
             images, labels = images.to(device), labels.to(device)
             with torch.no_grad():
                 representations = model.forward_backbone(images)
@@ -39,8 +48,7 @@ def linear_evaluation(model, proj_output_dim, train_loader, test_loader, epochs,
     correct, total = 0, 0
     with torch.no_grad():
         for batch in test_loader:
-            # Correct unpacking for LightlyDataset
-            images, labels, _ = batch
+            images, labels = _unpack_batch(batch)
             images, labels = images.to(device), labels.to(device)
             representations = model.forward_backbone(images)
             predictions = classifier(representations)
@@ -59,8 +67,7 @@ def knn_evaluation(model, train_loader, test_loader, device, k=20, temperature=0
     train_features, train_labels = [], []
     with torch.no_grad():
         for batch in train_loader:
-            # Correct unpacking for LightlyDataset
-            images, labels, _ = batch
+            images, labels = _unpack_batch(batch)
             images = images.to(device)
             features = model.forward_backbone(images)
             train_features.append(features)
@@ -72,8 +79,7 @@ def knn_evaluation(model, train_loader, test_loader, device, k=20, temperature=0
     correct, total = 0, 0
     with torch.no_grad():
         for batch in test_loader:
-            # Correct unpacking for LightlyDataset
-            images, labels, _ = batch
+            images, labels = _unpack_batch(batch)
             images, labels = images.to(device), labels.to(device)
             test_features = F.normalize(model.forward_backbone(images), dim=1)
             similarity_matrix = torch.matmul(test_features, train_features.T) / temperature
