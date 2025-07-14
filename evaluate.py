@@ -1,7 +1,7 @@
 # evaluate.py
 
 """
-Contains functions for evaluating the pre-trained model, now with robust data unpacking.
+Contains functions for evaluating the pre-trained model on CIFAR-10.
 """
 
 import torch
@@ -12,32 +12,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def _unpack_eval_batch(batch):
-    """
-    Unpacks a batch from an evaluation dataloader.
-    torchvision returns (image, label)
-    lightly returns (image, label, fname)
-    """
-    if len(batch) == 3: # LightlyDataset format
-        images, labels, _ = batch
-        return images, labels
-    else: # torchvision format
-        images, labels = batch
-        return images, labels
-
 def linear_evaluation(model, proj_output_dim, train_loader, test_loader, epochs, device):
     """Runs the linear evaluation protocol on the frozen backbone."""
     print("\n--- Starting Linear Evaluation ---")
     for param in model.backbone.parameters():
         param.requires_grad = False
-    # Assuming 10 classes for Imagenette/CIFAR-10
-    classifier = nn.Linear(proj_output_dim, 10).to(device)
+    classifier = nn.Linear(proj_output_dim, 10).to(device) # CIFAR-10 has 10 classes
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(classifier.parameters(), lr=0.001)
 
     for epoch in range(epochs):
-        for batch in train_loader:
-            images, labels = _unpack_eval_batch(batch)
+        for images, labels in train_loader:
             images, labels = images.to(device), labels.to(device)
             with torch.no_grad():
                 representations = model.forward_backbone(images)
@@ -49,8 +34,7 @@ def linear_evaluation(model, proj_output_dim, train_loader, test_loader, epochs,
 
     correct, total = 0, 0
     with torch.no_grad():
-        for batch in test_loader:
-            images, labels = _unpack_eval_batch(batch)
+        for images, labels in test_loader:
             images, labels = images.to(device), labels.to(device)
             representations = model.forward_backbone(images)
             predictions = classifier(representations)
@@ -68,8 +52,7 @@ def knn_evaluation(model, train_loader, test_loader, device, k=20, temperature=0
     model.eval()
     train_features, train_labels = [], []
     with torch.no_grad():
-        for batch in train_loader:
-            images, labels = _unpack_eval_batch(batch)
+        for images, labels in train_loader:
             images = images.to(device)
             features = model.forward_backbone(images)
             train_features.append(features)
@@ -80,8 +63,7 @@ def knn_evaluation(model, train_loader, test_loader, device, k=20, temperature=0
 
     correct, total = 0, 0
     with torch.no_grad():
-        for batch in test_loader:
-            images, labels = _unpack_eval_batch(batch)
+        for images, labels in test_loader:
             images, labels = images.to(device), labels.to(device)
             test_features = F.normalize(model.forward_backbone(images), dim=1)
             similarity_matrix = torch.matmul(test_features, train_features.T) / temperature
