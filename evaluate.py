@@ -17,13 +17,15 @@ def linear_evaluation(model, proj_output_dim, train_loader, test_loader, epochs,
     print("\n--- Starting Linear Evaluation ---")
     for param in model.backbone.parameters():
         param.requires_grad = False
+    # Assuming 10 classes for Imagenette/CIFAR-10
     classifier = nn.Linear(proj_output_dim, 10).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(classifier.parameters(), lr=0.001)
 
     for epoch in range(epochs):
-        for images, labels in train_loader:
-            # Correct unpacking for standard datasets
+        for batch in train_loader:
+            # Correct unpacking for LightlyDataset: (sample, target, fname)
+            images, labels, _ = batch
             images, labels = images.to(device), labels.to(device)
             with torch.no_grad():
                 representations = model.forward_backbone(images)
@@ -35,8 +37,9 @@ def linear_evaluation(model, proj_output_dim, train_loader, test_loader, epochs,
 
     correct, total = 0, 0
     with torch.no_grad():
-        for images, labels in test_loader:
-            # Correct unpacking for standard datasets
+        for batch in test_loader:
+            # Correct unpacking for LightlyDataset
+            images, labels, _ = batch
             images, labels = images.to(device), labels.to(device)
             representations = model.forward_backbone(images)
             predictions = classifier(representations)
@@ -54,8 +57,9 @@ def knn_evaluation(model, train_loader, test_loader, device, k=20, temperature=0
     model.eval()
     train_features, train_labels = [], []
     with torch.no_grad():
-        for images, labels in train_loader:
-            # Correct unpacking for standard datasets
+        for batch in train_loader:
+            # Correct unpacking for LightlyDataset
+            images, labels, _ = batch
             images = images.to(device)
             features = model.forward_backbone(images)
             train_features.append(features)
@@ -66,8 +70,9 @@ def knn_evaluation(model, train_loader, test_loader, device, k=20, temperature=0
 
     correct, total = 0, 0
     with torch.no_grad():
-        for images, labels in test_loader:
-            # Correct unpacking for standard datasets
+        for batch in test_loader:
+            # Correct unpacking for LightlyDataset
+            images, labels, _ = batch
             images, labels = images.to(device), labels.to(device)
             test_features = F.normalize(model.forward_backbone(images), dim=1)
             similarity_matrix = torch.matmul(test_features, train_features.T) / temperature
@@ -89,8 +94,9 @@ def log_tsne_plot(model, dataloader, device, epoch):
     num_samples, samples_gathered = 1000, 0
 
     with torch.no_grad():
-        for images, labels in dataloader:
-            # Correct unpacking for standard datasets
+        for batch in dataloader:
+            # Correct unpacking for LightlyDataset
+            images, labels, _ = batch
             images = images.to(device)
             features = model.forward_backbone(images)
             features_list.append(features.cpu().numpy())
@@ -102,7 +108,7 @@ def log_tsne_plot(model, dataloader, device, epoch):
     features = np.concatenate(features_list, axis=0)
     labels = np.concatenate(labels_list, axis=0)
 
-    tsne = TSNE(n_components=2, perplexity=30, learning_rate=200, n_iter=1000, random_state=42)
+    tsne = TSNE(n_components=2, perplexity=30, learning_rate='auto', init='pca', n_iter=1000, random_state=42)
     tsne_features = tsne.fit_transform(features)
 
     fig, ax = plt.subplots(figsize=(12, 12))
@@ -113,6 +119,6 @@ def log_tsne_plot(model, dataloader, device, epoch):
     ax.set_xlabel("t-SNE Dimension 1")
     ax.set_ylabel("t-SNE Dimension 2")
 
-    wandb.log({f"eval/tsne_plot": wandb.Image(fig), "epoch": epoch})
+    wandb.log({"eval/tsne_plot": wandb.Image(fig)}, step=epoch)
     plt.close(fig)
     print("--- t-SNE plot logged to W&B ---")
