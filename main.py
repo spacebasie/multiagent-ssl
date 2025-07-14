@@ -115,6 +115,7 @@ def main():
     """Main function with advanced logging."""
     args = parse_arguments()
     wandb.init(project=args.wandb_project, entity=args.wandb_entity, config=args)
+    wandb.config.update({"dataset_name": config.DATASET_NAME})
     device = config.DEVICE if torch.cuda.is_available() else "cpu"
 
     pretrain_dataloader, train_loader_eval, test_loader_eval = get_dataloaders(
