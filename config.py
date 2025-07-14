@@ -26,6 +26,11 @@ BATCH_SIZE = 256
 NUM_WORKERS = 4
 LEARNING_RATE = 0.01 # For centralized runs try 0.05
 
+# --- Model Parameters ---
+PROJECTION_INPUT_DIM = 512
+PROJECTION_HIDDEN_DIM = 2048
+PROJECTION_OUTPUT_DIM = 2048
+
 # --- VICReg Loss Hyperparameters ---
 LAMBDA = 32.0 # Your fine-tuned value
 MU = 32.0   # Your fine-tuned value
