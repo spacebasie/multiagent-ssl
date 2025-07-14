@@ -112,7 +112,7 @@ def parse_arguments():
 def main():
     """Main function to execute the pipeline."""
     args = parse_arguments()
-    wandb.init(project="ssl-cifar10-revert", config=args) # Using a new project for clarity
+    wandb.init(project="cifar10-runs", config=args) # Using a new project for clarity
     device = config.DEVICE if torch.cuda.is_available() else "cpu"
 
     pretrain_dataloader, train_loader_eval, test_loader_eval = get_dataloaders(
@@ -127,7 +127,7 @@ def main():
     criterion = VICRegLoss(lambda_=config.LAMBDA, mu=config.MU, nu=config.NU)
 
     if args.num_agents == 1:
-        wandb.run.name = f"centralized_cifar10_epochs_{args.epochs}"
+        wandb.run.name = f"centralized_epochs_{args.epochs}"
         optimizer = torch.optim.SGD(model.parameters(), lr=config.LEARNING_RATE, momentum=0.9, weight_decay=1e-4)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
         for epoch in range(args.epochs):
