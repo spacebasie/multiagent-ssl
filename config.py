@@ -8,7 +8,7 @@ Unified configuration file for both benchmark and federated runs.
 DEVICE = "cuda"
 
 # --- Dataset Configuration ---
-DATASET_NAME = "imagenette" # Change to 'cifar10' to switch
+DATASET_NAME = "cifar10" # Change to 'cifar10' to switch
 DATASET_PATH = "datasets"
 INPUT_SIZE = 128
 

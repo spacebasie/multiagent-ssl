@@ -188,7 +188,9 @@ def main():
     # --- Final Actions for both modes ---
     print("\n--- Training Finished ---")
     final_linear_acc = linear_evaluation(model, config.PROJECTION_INPUT_DIM, train_loader_eval, test_loader_eval, config.EVAL_EPOCHS, device)
+    final_knn_acc = knn_evaluation(model, train_loader_eval, test_loader_eval, device, config.KNN_K, config.KNN_TEMPERATURE)
     wandb.summary["final_linear_accuracy"] = final_linear_acc
+    wandb.summary["final_knn_accuracy"] = final_knn_acc
 
     if args.save_weights:
         model_save_path = f"run_{wandb.run.id}_backbone.pth"
