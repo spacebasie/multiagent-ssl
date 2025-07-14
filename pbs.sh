@@ -33,16 +33,13 @@ module load Python/3.10.4-GCCcore-11.3.0
 echo "Activating virtual environment..."
 source ~/venv/venv25/bin/activate
 
-# Now, run your main Python script.
-# You can pass any command-line arguments here, just like you would on your own machine.
-# These arguments will override the defaults in your config.py.
-# I've used some example values from your project.
+# These arguments will override the defaults in config.py.
 echo "Starting Python script..."
 python main.py \
     --num_agents 5 \
     --comm_rounds 10 \
     --local_epochs 2 \
-    --alpha 0.5 \
+    --alpha 5 \
     --eval_every 2 \
 
 echo "Job finished at $(date)"
