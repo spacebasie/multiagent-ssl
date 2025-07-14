@@ -15,7 +15,7 @@ INPUT_SIZE = 128
 # --- Centralized Benchmark Run Parameters ---
 BENCHMARK_EPOCHS = 800
 BATCH_SIZE = 256
-NUM_WORKERS = 8
+NUM_WORKERS = 4
 LEARNING_RATE = 0.05
 
 # --- Federated Learning Parameters ---

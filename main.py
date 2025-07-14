@@ -1,8 +1,8 @@
 # main.py
 
 """
-Main script with advanced logging for detailed experiment tracking.
-t-SNE plotting is temporarily disabled.
+Main script to run the VICReg self-supervised learning pipeline with Weights & Biases.
+This version has been updated to handle both torchvision and Lightly datasets.
 """
 
 import torch
@@ -18,13 +18,26 @@ import config
 from model import VICReg, VICRegLoss
 from data import get_dataloaders
 from data_splitter import split_data
-# Removed log_tsne_plot from imports
 from evaluate import linear_evaluation, knn_evaluation
+
+
+def _unpack_pretrain_batch(batch):
+    """
+    Unpacks a pre-training batch, which has two views.
+    lightly: ((view1, view2), label, fname)
+    torchvision: ((view1, view2), label)
+    """
+    if len(batch) == 3: # LightlyDataset format
+        (x0, x1), labels, _ = batch
+        return (x0, x1), labels
+    else: # torchvision format
+        (x0, x1), labels = batch
+        return (x0, x1), labels
 
 
 def agent_update(agent_model, agent_dataloader, local_epochs, criterion, device):
     """
-    Federated learning local update. Now handles detailed loss dict.
+    Performs the local training for a single agent in a federated setting.
     """
     optimizer = torch.optim.SGD(agent_model.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-4)
     agent_model.train()
@@ -32,7 +45,7 @@ def agent_update(agent_model, agent_dataloader, local_epochs, criterion, device)
 
     for _ in range(local_epochs):
         for batch in agent_dataloader:
-            (x0, x1), _, _ = batch
+            (x0, x1), _ = _unpack_pretrain_batch(batch)
             x0, x1 = x0.to(device), x1.to(device)
             z0 = agent_model(x0)
             z1 = agent_model(x1)
@@ -67,12 +80,12 @@ def aggregate_models(agent_models):
 
 def train_one_epoch_centralized(model, dataloader, optimizer, scheduler, criterion, device):
     """
-    Centralized training epoch. Now handles detailed loss dict.
+    Handles the training logic for a single epoch in a centralized setting.
     """
     model.train()
     agg_loss_dict = {}
     for batch in dataloader:
-        (x0, x1), _, _ = batch
+        (x0, x1), _ = _unpack_pretrain_batch(batch)
         x0, x1 = x0.to(device), x1.to(device)
         z0 = model(x0)
         z1 = model(x1)
@@ -107,12 +120,12 @@ def parse_arguments():
     parser.add_argument('--local_epochs', type=int, default=config.LOCAL_EPOCHS, help="Local epochs per agent per round for FL.")
     parser.add_argument('--alpha', type=float, default=config.NON_IID_ALPHA, help="Dirichlet alpha for non-IID data split.")
     parser.add_argument('--epochs', type=int, default=config.BENCHMARK_EPOCHS, help="Total training epochs for centralized run.")
-    parser.add_argument('--eval_every', type=int, default=25, help="Evaluate every N epochs/rounds.")
+    parser.add_argument('--eval_every', type=int, default=25, help="Evaluate every N rounds for federated runs.")
     return parser.parse_args()
 
 
 def main():
-    """Main function with advanced logging."""
+    """Main function to execute the pipeline."""
     args = parse_arguments()
     wandb.init(project=args.wandb_project, entity=args.wandb_entity, config=args)
     wandb.config.update({"dataset_name": config.DATASET_NAME})
@@ -144,16 +157,15 @@ def main():
             loss_dict = train_one_epoch_centralized(model, pretrain_dataloader, optimizer, scheduler, criterion, device)
             print(f"Epoch {epoch+1}/{args.epochs} | Loss: {loss_dict['loss']:.4f} | LR: {scheduler.get_last_lr()[0]:.5f}")
 
+            knn_acc = knn_evaluation(model, train_loader_eval, test_loader_eval, device, config.KNN_K, config.KNN_TEMPERATURE)
+            if knn_acc > max_knn_accuracy:
+                max_knn_accuracy = knn_acc
+                wandb.summary["best_knn_accuracy"] = max_knn_accuracy
+                wandb.summary["best_knn_epoch"] = epoch + 1
+
             wandb.log({f"train/{k}": v for k, v in loss_dict.items()}, step=epoch + 1)
             wandb.log({"train/lr": scheduler.get_last_lr()[0]}, step=epoch + 1)
-
-            if (epoch + 1) % args.eval_every == 0 or epoch == args.epochs - 1:
-                knn_acc = knn_evaluation(model, train_loader_eval, test_loader_eval, device, config.KNN_K, config.KNN_TEMPERATURE)
-                if knn_acc > max_knn_accuracy:
-                    max_knn_accuracy = knn_acc
-                    wandb.summary["best_knn_accuracy"] = max_knn_accuracy
-                    wandb.summary["best_knn_epoch"] = epoch + 1
-                wandb.log({"eval/knn_accuracy": knn_acc, "eval/max_knn_accuracy": max_knn_accuracy}, step=epoch + 1)
+            wandb.log({"eval/knn_accuracy": knn_acc, "eval/max_knn_accuracy": max_knn_accuracy}, step=epoch + 1)
 
     else:
         # --- FEDERATED LEARNING RUN ---
