@@ -2,6 +2,7 @@
 
 """
 Main script with advanced logging for detailed experiment tracking.
+t-SNE plotting is temporarily disabled.
 """
 
 import torch
@@ -17,7 +18,8 @@ import config
 from model import VICReg, VICRegLoss
 from data import get_dataloaders
 from data_splitter import split_data
-from evaluate import linear_evaluation, knn_evaluation, log_tsne_plot
+# Removed log_tsne_plot from imports
+from evaluate import linear_evaluation, knn_evaluation
 
 
 def agent_update(agent_model, agent_dataloader, local_epochs, criterion, device):
@@ -32,7 +34,8 @@ def agent_update(agent_model, agent_dataloader, local_epochs, criterion, device)
         for batch in agent_dataloader:
             (x0, x1), _, _ = batch
             x0, x1 = x0.to(device), x1.to(device)
-            z0, z1 = agent_model(x0), agent_model(x1)
+            z0 = agent_model(x0)
+            z1 = agent_model(x1)
             loss_dict = criterion(z0, z1)
             loss = loss_dict["loss"]
 
@@ -46,7 +49,6 @@ def agent_update(agent_model, agent_dataloader, local_epochs, criterion, device)
             for k, v in loss_dict.items():
                 agg_loss_dict[k] = agg_loss_dict.get(k, 0.0) + v.item()
 
-    # Average the losses over all batches
     num_batches = len(agent_dataloader) * local_epochs
     for k in agg_loss_dict:
         agg_loss_dict[k] /= num_batches
@@ -55,7 +57,6 @@ def agent_update(agent_model, agent_dataloader, local_epochs, criterion, device)
 
 def aggregate_models(agent_models):
     """Averages the weights of the agent models."""
-    # This function remains the same
     global_state_dict = copy.deepcopy(agent_models[0].state_dict())
     for key in global_state_dict.keys():
         for i in range(1, len(agent_models)):
@@ -73,7 +74,8 @@ def train_one_epoch_centralized(model, dataloader, optimizer, scheduler, criteri
     for batch in dataloader:
         (x0, x1), _, _ = batch
         x0, x1 = x0.to(device), x1.to(device)
-        z0, z1 = model(x0), model(x1)
+        z0 = model(x0)
+        z1 = model(x1)
         loss_dict = criterion(z0, z1)
         loss = loss_dict["loss"]
 
@@ -95,18 +97,17 @@ def train_one_epoch_centralized(model, dataloader, optimizer, scheduler, criteri
 
 
 def parse_arguments():
-    """Parses command-line arguments."""
-    # This function remains the same
+    """Parses command-line arguments for both modes."""
     parser = argparse.ArgumentParser(description="Unified VICReg Training Pipeline with W&B")
-    parser.add_argument('--save_weights', action='store_true')
-    parser.add_argument('--wandb_project', type=str, default="ssl-experiments")
-    parser.add_argument('--wandb_entity', type=str, default=None)
-    parser.add_argument('--num_agents', type=int, default=config.NUM_AGENTS)
-    parser.add_argument('--comm_rounds', type=int, default=config.COMMUNICATION_ROUNDS)
-    parser.add_argument('--local_epochs', type=int, default=config.LOCAL_EPOCHS)
-    parser.add_argument('--alpha', type=float, default=config.NON_IID_ALPHA)
-    parser.add_argument('--epochs', type=int, default=config.BENCHMARK_EPOCHS)
-    parser.add_argument('--eval_every', type=int, default=25)
+    parser.add_argument('--save_weights', action='store_true', help='If set, saves the final model backbone weights.')
+    parser.add_argument('--wandb_project', type=str, default="ssl-experiments", help="W&B project name.")
+    parser.add_argument('--wandb_entity', type=str, default=None, help="Your W&B entity (username or team).")
+    parser.add_argument('--num_agents', type=int, default=config.NUM_AGENTS, help="Number of agents. Set to 1 for centralized training.")
+    parser.add_argument('--comm_rounds', type=int, default=config.COMMUNICATION_ROUNDS, help="Communication rounds for FL.")
+    parser.add_argument('--local_epochs', type=int, default=config.LOCAL_EPOCHS, help="Local epochs per agent per round for FL.")
+    parser.add_argument('--alpha', type=float, default=config.NON_IID_ALPHA, help="Dirichlet alpha for non-IID data split.")
+    parser.add_argument('--epochs', type=int, default=config.BENCHMARK_EPOCHS, help="Total training epochs for centralized run.")
+    parser.add_argument('--eval_every', type=int, default=25, help="Evaluate every N epochs/rounds.")
     return parser.parse_args()
 
 
@@ -142,7 +143,6 @@ def main():
             loss_dict = train_one_epoch_centralized(model, pretrain_dataloader, optimizer, scheduler, criterion, device)
             print(f"Epoch {epoch+1}/{args.epochs} | Loss: {loss_dict['loss']:.4f} | LR: {scheduler.get_last_lr()[0]:.5f}")
 
-            # Log detailed losses
             wandb.log({f"train/{k}": v for k, v in loss_dict.items()}, step=epoch + 1)
             wandb.log({"train/lr": scheduler.get_last_lr()[0]}, step=epoch + 1)
 
@@ -153,8 +153,6 @@ def main():
                     wandb.summary["best_knn_accuracy"] = max_knn_accuracy
                     wandb.summary["best_knn_epoch"] = epoch + 1
                 wandb.log({"eval/knn_accuracy": knn_acc, "eval/max_knn_accuracy": max_knn_accuracy}, step=epoch + 1)
-                # Log t-SNE plot periodically
-                log_tsne_plot(model, test_loader_eval, device, epoch + 1)
 
     else:
         # --- FEDERATED LEARNING RUN ---
@@ -167,7 +165,6 @@ def main():
         for round_num in range(args.comm_rounds):
             print(f"\n--- Round {round_num + 1}/{args.comm_rounds} ---")
             agent_models = []
-            # Logic to aggregate losses from all agents for this round
             round_agg_loss = {}
 
             for i in range(args.num_agents):
@@ -177,7 +174,6 @@ def main():
                 for k, v in loss_dict.items():
                     round_agg_loss[k] = round_agg_loss.get(k, 0.0) + v
 
-            # Log the average of the detailed losses across all agents
             for k in round_agg_loss:
                 round_agg_loss[k] /= args.num_agents
             wandb.log({f"train/avg_{k}": v for k, v in round_agg_loss.items()}, step=round_num + 1)
@@ -188,9 +184,8 @@ def main():
             if (round_num + 1) % args.eval_every == 0:
                 knn_acc = knn_evaluation(model, train_loader_eval, test_loader_eval, device, config.KNN_K, config.KNN_TEMPERATURE)
                 wandb.log({"eval/knn_accuracy": knn_acc}, step=round_num + 1)
-                log_tsne_plot(model, test_loader_eval, device, round_num + 1)
 
-    # --- Final Actions ---
+    # --- Final Actions for both modes ---
     print("\n--- Training Finished ---")
     final_linear_acc = linear_evaluation(model, config.PROJECTION_INPUT_DIM, train_loader_eval, test_loader_eval, config.EVAL_EPOCHS, device)
     wandb.summary["final_linear_accuracy"] = final_linear_acc

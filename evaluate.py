@@ -1,7 +1,8 @@
 # evaluate.py
 
 """
-Contains functions for evaluating the pre-trained model, now with corrected data unpacking.
+Contains functions for evaluating the pre-trained model.
+t-SNE functionality is temporarily removed to resolve dependency issues.
 """
 
 import torch
@@ -10,7 +11,7 @@ import torch.nn.functional as F
 import wandb
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.manifold import TSNE
+
 
 def linear_evaluation(model, proj_output_dim, train_loader, test_loader, epochs, device):
     """Runs the linear evaluation protocol on the frozen backbone."""
@@ -85,40 +86,3 @@ def knn_evaluation(model, train_loader, test_loader, device, k=20, temperature=0
     accuracy = 100 * correct / total
     print(f"Final kNN Test Accuracy: {accuracy:.2f}%")
     return accuracy
-
-def log_tsne_plot(model, dataloader, device, epoch):
-    """Generates and logs a t-SNE plot of the backbone's feature representations."""
-    print("--- Generating t-SNE plot ---")
-    model.eval()
-    features_list, labels_list = [], []
-    num_samples, samples_gathered = 1000, 0
-
-    with torch.no_grad():
-        for batch in dataloader:
-            # Correct unpacking for LightlyDataset
-            images, labels, _ = batch
-            images = images.to(device)
-            features = model.forward_backbone(images)
-            features_list.append(features.cpu().numpy())
-            labels_list.append(labels.cpu().numpy())
-            samples_gathered += len(images)
-            if samples_gathered >= num_samples:
-                break
-
-    features = np.concatenate(features_list, axis=0)
-    labels = np.concatenate(labels_list, axis=0)
-
-    tsne = TSNE(n_components=2, perplexity=30, learning_rate='auto', init='pca', n_iter=1000, random_state=42)
-    tsne_features = tsne.fit_transform(features)
-
-    fig, ax = plt.subplots(figsize=(12, 12))
-    scatter = ax.scatter(tsne_features[:, 0], tsne_features[:, 1], c=labels, cmap='tab10', alpha=0.7)
-    legend1 = ax.legend(*scatter.legend_elements(), title="Classes")
-    ax.add_artist(legend1)
-    ax.set_title(f"t-SNE of Feature Embeddings at Epoch {epoch}")
-    ax.set_xlabel("t-SNE Dimension 1")
-    ax.set_ylabel("t-SNE Dimension 2")
-
-    wandb.log({"eval/tsne_plot": wandb.Image(fig)}, step=epoch)
-    plt.close(fig)
-    print("--- t-SNE plot logged to W&B ---")
