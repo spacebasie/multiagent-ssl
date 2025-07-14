@@ -1,23 +1,29 @@
 # config.py
 
 """
-Configuration file for the VICReg model, training, and evaluation.
+Unified configuration file for both benchmark and federated runs.
 """
 
 # --- Device Configuration ---
 DEVICE = "cuda"
 
 # --- Dataset Configuration ---
-# Change this to 'cifar10' to switch back
-DATASET_NAME = "imagenette"
-DATASET_PATH = "datasets" # Root folder for all datasets
-INPUT_SIZE = 128          # Using 128px input size as per the benchmark
+DATASET_NAME = "imagenette" # Change to 'cifar10' to switch
+DATASET_PATH = "datasets"
+INPUT_SIZE = 128
 
-# --- Benchmark Run Parameters ---
+# --- Centralized Benchmark Run Parameters ---
 BENCHMARK_EPOCHS = 800
 BATCH_SIZE = 256
 NUM_WORKERS = 8
 LEARNING_RATE = 0.05
+
+# --- Federated Learning Parameters ---
+# These are used when --num_agents > 1
+NUM_AGENTS = 10
+COMMUNICATION_ROUNDS = 100
+LOCAL_EPOCHS = 2
+NON_IID_ALPHA = 0.5
 
 # --- Model Parameters ---
 BACKBONE_MODEL = "resnet18"
@@ -32,7 +38,7 @@ NU = 1.0
 
 # --- Evaluation Parameters ---
 EVAL_EPOCHS = 50
-KNN_K = 20                # Using k=20 as per the benchmark
+KNN_K = 20
 KNN_TEMPERATURE = 0.1
 
 # --- File Paths ---
