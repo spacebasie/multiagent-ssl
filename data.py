@@ -28,7 +28,8 @@ def get_dataloaders(dataset_path: str, batch_size: int, num_workers: int, input_
     transform_eval = v2.Compose([
         v2.ToImage(),
         v2.ToDtype(torch.float32, scale=True),
-        v2.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2023, 0.1994, 0.2010]),
+        # v2.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2023, 0.1994, 0.2010]), # CIFAR-10 normalization
+        v2.Normalize(mean=[0.5071, 0.4867, 0.4408], std=[0.2675, 0.2565, 0.2761]) # CIFAR-100 normalization
     ])
 
     # Training and test sets for evaluation

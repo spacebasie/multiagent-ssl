@@ -17,7 +17,7 @@ def linear_evaluation(model, proj_output_dim, train_loader, test_loader, epochs,
     print("\n--- Starting Linear Evaluation ---")
     for param in model.backbone.parameters():
         param.requires_grad = False
-    classifier = nn.Linear(proj_output_dim, 100).to(device) # CIFAR-10 has 10 classes
+    classifier = nn.Linear(proj_output_dim, 100).to(device) # CIFAR-10 has 10 classes or 100 for CIFAR-100
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(classifier.parameters(), lr=0.001)
 
