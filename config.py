@@ -9,7 +9,7 @@ This version is simplified and dedicated to CIFAR-10.
 DEVICE = "cuda"
 
 # --- Dataset Configuration ---
-DATASET_PATH = "datasets/cifar10"
+DATASET_PATH = "datasets/cifar100"
 INPUT_SIZE = 32
 
 # --- Federated Learning Parameters ---
@@ -32,8 +32,8 @@ PROJECTION_HIDDEN_DIM = 2048
 PROJECTION_OUTPUT_DIM = 2048
 
 # --- VICReg Loss Hyperparameters ---
-LAMBDA = 25 # Your fine-tuned value
-MU = 25   # Your fine-tuned value
+LAMBDA = 32 # Your fine-tuned value
+MU = 32   # Your fine-tuned value
 NU = 1.0
 
 # --- Evaluation Parameters ---

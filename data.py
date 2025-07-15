@@ -16,7 +16,7 @@ def get_dataloaders(dataset_path: str, batch_size: int, num_workers: int, input_
     """
     # Transform for self-supervised pre-training (with two views)
     transform_vicreg = VICRegTransform(input_size=input_size)
-    pretrain_dataset = torchvision.datasets.CIFAR10(
+    pretrain_dataset = torchvision.datasets.CIFAR100(
         root=dataset_path, download=True, train=True, transform=transform_vicreg
     )
     pretrain_dataloader = DataLoader(
@@ -32,10 +32,10 @@ def get_dataloaders(dataset_path: str, batch_size: int, num_workers: int, input_
     ])
 
     # Training and test sets for evaluation
-    train_dataset_eval = torchvision.datasets.CIFAR10(
+    train_dataset_eval = torchvision.datasets.CIFAR100(
         root=dataset_path, download=True, train=True, transform=transform_eval
     )
-    test_dataset_eval = torchvision.datasets.CIFAR10(
+    test_dataset_eval = torchvision.datasets.CIFAR100(
         root=dataset_path, download=True, train=False, transform=transform_eval
     )
 
