@@ -10,6 +10,7 @@ DEVICE = "cuda"
 
 # --- Dataset Configuration ---
 DATASET_PATH = "datasets/cifar100"
+DATASET_NAME = "cifar100"
 INPUT_SIZE = 32
 
 # --- Federated Learning Parameters ---
