@@ -1,14 +1,15 @@
 # main.py
 
 """
-Main script to run the VICReg self-supervised learning pipeline for CIFAR-10.
-This is a simplified, robust version for federated and centralized runs.
+Main script to run the VICReg self-supervised learning pipeline.
+This version includes a learning rate warmup to stabilize training.
 """
 
 import torch
 import torchvision
 from torch import nn
 from torch.utils.data import DataLoader
+from torch.optim.lr_scheduler import _LRScheduler
 import copy
 import argparse
 import wandb
@@ -21,6 +22,30 @@ from data_splitter import split_data
 from evaluate import linear_evaluation, knn_evaluation
 
 
+class WarmupCosineAnnealingLR(_LRScheduler):
+    """
+    Custom scheduler with a linear warmup phase followed by cosine annealing.
+    """
+
+    def __init__(self, optimizer, warmup_epochs, max_epochs, last_epoch=-1):
+        self.warmup_epochs = warmup_epochs
+        self.max_epochs = max_epochs
+        super(WarmupCosineAnnealingLR, self).__init__(optimizer, last_epoch)
+
+    def get_lr(self):
+        if self.last_epoch < self.warmup_epochs:
+            # Linear warmup
+            return [base_lr * (self.last_epoch + 1) / self.warmup_epochs for base_lr in self.base_lrs]
+        else:
+            # Cosine annealing
+            return [
+                base_lr *
+                (1 + torch.cos(torch.tensor(
+                    3.14159 * (self.last_epoch - self.warmup_epochs) / (self.max_epochs - self.warmup_epochs)))) / 2
+                for base_lr in self.base_lrs
+            ]
+
+
 def agent_update(agent_model, agent_dataloader, local_epochs, criterion, device):
     """
     Performs the local training for a single agent in a federated setting.
@@ -31,11 +56,9 @@ def agent_update(agent_model, agent_dataloader, local_epochs, criterion, device)
 
     for _ in range(local_epochs):
         for batch in agent_dataloader:
-            # Unpack for CIFAR-10 pre-training: ((view1, view2), label)
             (x0, x1), _ = batch
             x0, x1 = x0.to(device), x1.to(device)
-            z0 = agent_model(x0)
-            z1 = agent_model(x1)
+            z0, z1 = agent_model(x0), agent_model(x1)
             loss_dict = criterion(z0, z1)
             loss = loss_dict["loss"]
 
@@ -50,8 +73,9 @@ def agent_update(agent_model, agent_dataloader, local_epochs, criterion, device)
                 agg_loss_dict[k] = agg_loss_dict.get(k, 0.0) + v.item()
 
     num_batches = len(agent_dataloader) * local_epochs
-    for k in agg_loss_dict:
-        agg_loss_dict[k] /= num_batches
+    if num_batches > 0:
+        for k in agg_loss_dict:
+            agg_loss_dict[k] /= num_batches
     return agg_loss_dict
 
 
@@ -65,14 +89,14 @@ def aggregate_models(agent_models):
     return global_state_dict
 
 
-def train_one_epoch_centralized(model, dataloader, optimizer, scheduler, criterion, device):
+def train_one_epoch_centralized(model, dataloader, optimizer, criterion, device):
     """
     Handles the training logic for a single epoch in a centralized setting.
+    Note: Scheduler is now stepped outside this function.
     """
     model.train()
     agg_loss_dict = {}
     for batch in dataloader:
-        # Unpack for CIFAR-10 pre-training: ((view1, view2), label)
         (x0, x1), _ = batch
         x0, x1 = x0.to(device), x1.to(device)
         z0 = model(x0)
@@ -80,7 +104,8 @@ def train_one_epoch_centralized(model, dataloader, optimizer, scheduler, criteri
         loss_dict = criterion(z0, z1)
         loss = loss_dict["loss"]
 
-        if torch.isnan(loss):
+        if torch.isnan(loss) or torch.isinf(loss):
+            print("Warning: NaN or Inf loss detected. Skipping batch.")
             continue
 
         optimizer.zero_grad()
@@ -90,10 +115,10 @@ def train_one_epoch_centralized(model, dataloader, optimizer, scheduler, criteri
         for k, v in loss_dict.items():
             agg_loss_dict[k] = agg_loss_dict.get(k, 0.0) + v.item()
 
-    scheduler.step()
     num_batches = len(dataloader)
-    for k in agg_loss_dict:
-        agg_loss_dict[k] /= num_batches
+    if num_batches > 0:
+        for k in agg_loss_dict:
+            agg_loss_dict[k] /= num_batches
     return agg_loss_dict
 
 
@@ -112,10 +137,14 @@ def parse_arguments():
 def main():
     """Main function to execute the pipeline."""
     args = parse_arguments()
-    wandb.init(project="cifar10-runs", config=args) # Using a new project for clarity
+    wandb.init(project="ssl-cifar-experiments", config=args)
     device = config.DEVICE if torch.cuda.is_available() else "cpu"
 
+    num_classes = 100 if config.DATASET_NAME == 'cifar100' else 10
+    wandb.config.update({"dataset": config.DATASET_NAME, "num_classes": num_classes})
+
     pretrain_dataloader, train_loader_eval, test_loader_eval = get_dataloaders(
+        dataset_name=config.DATASET_NAME,
         dataset_path=config.DATASET_PATH,
         batch_size=config.BATCH_SIZE,
         num_workers=config.NUM_WORKERS,
@@ -123,24 +152,40 @@ def main():
     )
 
     backbone = nn.Sequential(*list(torchvision.models.resnet18().children())[:-1])
-    model = VICReg(backbone, proj_input_dim=config.PROJECTION_INPUT_DIM, proj_hidden_dim=config.PROJECTION_HIDDEN_DIM, proj_output_dim=config.PROJECTION_OUTPUT_DIM).to(device)
+    model = VICReg(backbone, proj_input_dim=config.PROJECTION_INPUT_DIM, proj_hidden_dim=config.PROJECTION_HIDDEN_DIM,
+                   proj_output_dim=config.PROJECTION_OUTPUT_DIM).to(device)
     criterion = VICRegLoss(lambda_=config.LAMBDA, mu=config.MU, nu=config.NU)
 
     if args.num_agents == 1:
-        wandb.run.name = f"centralized_epochs_{args.epochs}"
+        wandb.run.name = f"centralized_{config.DATASET_NAME}_epochs_{args.epochs}"
         optimizer = torch.optim.SGD(model.parameters(), lr=config.LEARNING_RATE, momentum=0.9, weight_decay=1e-4)
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
+        # Use the warmup scheduler
+        scheduler = WarmupCosineAnnealingLR(optimizer, warmup_epochs=10, max_epochs=args.epochs)
+
         for epoch in range(args.epochs):
-            loss_dict = train_one_epoch_centralized(model, pretrain_dataloader, optimizer, scheduler, criterion, device)
-            print(f"Epoch {epoch+1}/{args.epochs} | Loss: {loss_dict['loss']:.4f}")
+            loss_dict = train_one_epoch_centralized(model, pretrain_dataloader, optimizer, criterion, device)
+            # Step the scheduler after the epoch is complete
+            scheduler.step()
+
+            if not loss_dict:
+                print(f"Epoch {epoch + 1}/{args.epochs} | Training unstable, all batches produced NaN loss. Stopping.")
+                break
+
+            print(
+                f"Epoch {epoch + 1}/{args.epochs} | Loss: {loss_dict['loss']:.4f} | LR: {optimizer.param_groups[0]['lr']:.5f}")
             wandb.log({f"train/{k}": v for k, v in loss_dict.items()}, step=epoch + 1)
+            wandb.log({"train/lr": optimizer.param_groups[0]['lr']}, step=epoch + 1)
+
             if (epoch + 1) % args.eval_every == 0:
-                knn_acc = knn_evaluation(model, train_loader_eval, test_loader_eval, device, config.KNN_K, config.KNN_TEMPERATURE)
+                knn_acc = knn_evaluation(model, train_loader_eval, test_loader_eval, device, config.KNN_K,
+                                         config.KNN_TEMPERATURE)
                 wandb.log({"eval/knn_accuracy": knn_acc}, step=epoch + 1)
     else:
+        # Federated learning logic
         wandb.run.name = f"federated_agents_{args.num_agents}_alpha_{args.alpha}"
         agent_datasets = split_data(pretrain_dataloader.dataset, args.num_agents, args.alpha)
-        agent_dataloaders = [DataLoader(ds, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS) for ds in agent_datasets]
+        agent_dataloaders = [DataLoader(ds, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS)
+                             for ds in agent_datasets]
         for round_num in range(args.comm_rounds):
             print(f"\n--- Round {round_num + 1}/{args.comm_rounds} ---")
             agent_models = []
@@ -148,21 +193,30 @@ def main():
             for i in range(args.num_agents):
                 agent_model = copy.deepcopy(model).to(device)
                 loss_dict = agent_update(agent_model, agent_dataloaders[i], args.local_epochs, criterion, device)
-                agent_models.append(agent_model)
-                for k, v in loss_dict.items():
-                    round_agg_loss[k] = round_agg_loss.get(k, 0.0) + v
+                if loss_dict:
+                    agent_models.append(agent_model)
+                    for k, v in loss_dict.items():
+                        round_agg_loss[k] = round_agg_loss.get(k, 0.0) + v
+
+            if not agent_models:
+                print(f"Round {round_num + 1} | All agents failed. Stopping.")
+                break
+
             for k in round_agg_loss:
-                round_agg_loss[k] /= args.num_agents
+                round_agg_loss[k] /= len(agent_models)
             wandb.log({f"train/avg_{k}": v for k, v in round_agg_loss.items()}, step=round_num + 1)
             global_state_dict = aggregate_models(agent_models)
             model.load_state_dict(global_state_dict)
             if (round_num + 1) % args.eval_every == 0:
-                knn_acc = knn_evaluation(model, train_loader_eval, test_loader_eval, device, config.KNN_K, config.KNN_TEMPERATURE)
+                knn_acc = knn_evaluation(model, train_loader_eval, test_loader_eval, device, config.KNN_K,
+                                         config.KNN_TEMPERATURE)
                 wandb.log({"eval/knn_accuracy": knn_acc}, step=round_num + 1)
 
     print("\n--- Training Finished ---")
-    final_linear_acc = linear_evaluation(model, config.PROJECTION_INPUT_DIM, train_loader_eval, test_loader_eval, config.EVAL_EPOCHS, device)
-    final_knn_acc = knn_evaluation(model, train_loader_eval, test_loader_eval, device, config.KNN_K, config.KNN_TEMPERATURE)
+    final_linear_acc = linear_evaluation(model, config.PROJECTION_INPUT_DIM, train_loader_eval, test_loader_eval,
+                                         config.EVAL_EPOCHS, device, num_classes=num_classes)
+    final_knn_acc = knn_evaluation(model, train_loader_eval, test_loader_eval, device, config.KNN_K,
+                                   config.KNN_TEMPERATURE)
     wandb.summary["final_linear_accuracy"] = final_linear_acc
     wandb.summary["final_knn_accuracy"] = final_knn_acc
     wandb.finish()
