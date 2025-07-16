@@ -163,9 +163,14 @@ def main():
     )
 
     # Alternative backbone setup specifically for CIFAR-10
-    # Use the lightly ResNetGenerator to get the correct backbone for CIFAR-10
-    resnet = ResNetGenerator('resnet-18', cifar10=True)
-    # The backbone is the ResNet without its final classification layer
+    # 1. Create a standard torchvision ResNet-18
+    resnet = torchvision.models.resnet18()
+    # 2. Modify it for CIFAR-10 as per the benchmark description
+    #    Replace the first 7x7 conv with a 3x3 conv
+    resnet.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+    #    Remove the initial MaxPool layer
+    resnet.maxpool = nn.Identity()
+    # 3. The backbone is the modified ResNet without its final classification layer
     backbone = nn.Sequential(*list(resnet.children())[:-1])
 
     # Original backbone
