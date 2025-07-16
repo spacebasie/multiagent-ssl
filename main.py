@@ -2,7 +2,6 @@
 
 """
 Main script to run the VICReg self-supervised learning pipeline.
-This version includes a learning rate warmup to stabilize training.
 """
 
 import torch
@@ -164,17 +163,17 @@ def main():
 
     # Alternative backbone setup specifically for CIFAR-10
     # 1. Create a standard torchvision ResNet-18
-    resnet = torchvision.models.resnet18()
-    # 2. Modify it for CIFAR-10 as per the benchmark description
-    #    Replace the first 7x7 conv with a 3x3 conv
-    resnet.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
-    #    Remove the initial MaxPool layer
-    resnet.maxpool = nn.Identity()
-    # 3. The backbone is the modified ResNet without its final classification layer
-    backbone = nn.Sequential(*list(resnet.children())[:-1])
+    # resnet = torchvision.models.resnet18()
+    # # 2. Modify it for CIFAR-10 as per the benchmark description
+    # #    Replace the first 7x7 conv with a 3x3 conv
+    # resnet.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+    # #    Remove the initial MaxPool layer
+    # resnet.maxpool = nn.Identity()
+    # # 3. The backbone is the modified ResNet without its final classification layer
+    # backbone = nn.Sequential(*list(resnet.children())[:-1])
 
     # Original backbone
-    # backbone = nn.Sequential(*list(torchvision.models.resnet18().children())[:-1])
+    backbone = nn.Sequential(*list(torchvision.models.resnet18().children())[:-1])
     model = VICReg(backbone, proj_input_dim=config.PROJECTION_INPUT_DIM, proj_hidden_dim=config.PROJECTION_HIDDEN_DIM,
                    proj_output_dim=config.PROJECTION_OUTPUT_DIM).to(device)
     criterion = VICRegLoss(lambda_=config.LAMBDA, mu=config.MU, nu=config.NU)

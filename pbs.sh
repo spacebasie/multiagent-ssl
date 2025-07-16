@@ -36,10 +36,10 @@ source ~/venv/venv25/bin/activate
 # These arguments will override the defaults in config.py.
 echo "Starting Python script..."
 python main.py \
-    --num_agents 1 \
+    --num_agents 20 \
     --comm_rounds 100 \
     --local_epochs 2 \
-    --alpha 0.5 \
+    --alpha 2 \
     --eval_every 5 \
 
 echo "Job finished at $(date)"
