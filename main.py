@@ -194,27 +194,38 @@ def main():
         # Federated learning logic
         wandb.run.name = f"federated_agents_{args.num_agents}_alpha_{args.alpha}"
         agent_datasets = split_data(pretrain_dataloader.dataset, args.num_agents, args.alpha)
+        # 1. Filter out any agents that were assigned no data
+        active_agent_datasets = [ds for ds in agent_datasets if len(ds) > 0]
+        print(f"Data split resulted in {len(active_agent_datasets)} active agents out of {args.num_agents}.")
+        # 2. Create DataLoaders only for active agents
         agent_dataloaders = [DataLoader(ds, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS)
-                             for ds in agent_datasets]
+                             for ds in active_agent_datasets]
+
         for round_num in range(args.comm_rounds):
             print(f"\n--- Round {round_num + 1}/{args.comm_rounds} ---")
             agent_models = []
             round_agg_loss = {}
-            for i in range(args.num_agents):
+
+            # 3. Iterate over the active dataloaders, not a fixed range
+            for agent_dataloader in agent_dataloaders:
                 agent_model = copy.deepcopy(model).to(device)
-                loss_dict = agent_update(agent_model, agent_dataloaders[i], args.local_epochs, criterion, device)
-                if loss_dict:
+                loss_dict = agent_update(agent_model, agent_dataloader, args.local_epochs, criterion, device)
+
+                if loss_dict:  # Check if the agent trained successfully
                     agent_models.append(agent_model)
                     for k, v in loss_dict.items():
                         round_agg_loss[k] = round_agg_loss.get(k, 0.0) + v
 
             if not agent_models:
-                print(f"Round {round_num + 1} | All agents failed. Stopping.")
+                print(f"Round {round_num + 1} | All active agents failed to train. Stopping.")
                 break
 
+            # 4. Average losses and models over the number of agents that actually trained
+            num_successful_agents = len(agent_models)
             for k in round_agg_loss:
-                round_agg_loss[k] /= len(agent_models)
+                round_agg_loss[k] /= num_successful_agents
             wandb.log({f"train/avg_{k}": v for k, v in round_agg_loss.items()}, step=round_num + 1)
+
             global_state_dict = aggregate_models(agent_models)
             model.load_state_dict(global_state_dict)
             if (round_num + 1) % args.eval_every == 0:
