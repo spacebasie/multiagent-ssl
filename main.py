@@ -137,7 +137,17 @@ def parse_arguments():
 def main():
     """Main function to execute the pipeline."""
     args = parse_arguments()
-    wandb.init(project="ssl-cifar-experiments", config=args)
+    wandb.init(project="cifar10-runs", config=args)
+
+    wandb.config.update({
+        "lambda": config.LAMBDA,
+        "mu": config.MU,
+        "nu": config.NU,
+        "knn_k": config.KNN_K,
+        "knn_temperature": config.KNN_TEMPERATURE,
+        "learning_rate": config.LEARNING_RATE,
+    })
+
     device = config.DEVICE if torch.cuda.is_available() else "cpu"
 
     num_classes = 100 if config.DATASET_NAME == 'cifar100' else 10
@@ -160,12 +170,12 @@ def main():
         wandb.run.name = f"centralized_{config.DATASET_NAME}_epochs_{args.epochs}"
         optimizer = torch.optim.SGD(model.parameters(), lr=config.LEARNING_RATE, momentum=0.9, weight_decay=1e-4)
         # Use the warmup scheduler
-        scheduler = WarmupCosineAnnealingLR(optimizer, warmup_epochs=10, max_epochs=args.epochs)
+        # scheduler = WarmupCosineAnnealingLR(optimizer, warmup_epochs=10, max_epochs=args.epochs)
 
         for epoch in range(args.epochs):
             loss_dict = train_one_epoch_centralized(model, pretrain_dataloader, optimizer, criterion, device)
             # Step the scheduler after the epoch is complete
-            scheduler.step()
+            # scheduler.step()
 
             if not loss_dict:
                 print(f"Epoch {epoch + 1}/{args.epochs} | Training unstable, all batches produced NaN loss. Stopping.")
@@ -214,7 +224,7 @@ def main():
 
     print("\n--- Training Finished ---")
     final_linear_acc = linear_evaluation(model, config.PROJECTION_INPUT_DIM, train_loader_eval, test_loader_eval,
-                                         config.EVAL_EPOCHS, device, num_classes=num_classes)
+                                         config.EVAL_EPOCHS, device)
     final_knn_acc = knn_evaluation(model, train_loader_eval, test_loader_eval, device, config.KNN_K,
                                    config.KNN_TEMPERATURE)
     wandb.summary["final_linear_accuracy"] = final_linear_acc

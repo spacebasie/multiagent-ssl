@@ -9,8 +9,8 @@ This version is simplified and dedicated to CIFAR-10.
 DEVICE = "cuda"
 
 # --- Dataset Configuration ---
-DATASET_PATH = "datasets/cifar100"
-DATASET_NAME = "cifar100"
+DATASET_PATH = "datasets/cifar10"
+DATASET_NAME = "cifar10"
 INPUT_SIZE = 32
 
 # --- Federated Learning Parameters ---
@@ -23,14 +23,14 @@ NON_IID_ALPHA = 0.5
 EPOCHS = 200 # A reasonable number for a single run
 
 # --- General Training Parameters ---
-BATCH_SIZE = 512 # For CIFAR-10, 256 is a good batch size
+BATCH_SIZE = 256 # For CIFAR-10, 256 is a good batch size
 NUM_WORKERS = 4
-LEARNING_RATE = 0.02 # For centralized runs try 0.05
+LEARNING_RATE = 0.01 # For centralized runs try 0.05
 
 # --- Model Parameters ---
 PROJECTION_INPUT_DIM = 512
-PROJECTION_HIDDEN_DIM = 4096 # for cifar10 2048
-PROJECTION_OUTPUT_DIM = 4096 # for cifar10 2048
+PROJECTION_HIDDEN_DIM = 2048 # for cifar10 2048
+PROJECTION_OUTPUT_DIM = 2048 # for cifar10 2048
 
 # --- VICReg Loss Hyperparameters ---
 LAMBDA = 25 # Your fine-tuned value
