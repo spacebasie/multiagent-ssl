@@ -20,6 +20,7 @@ from model import VICReg, VICRegLoss
 from data import get_dataloaders
 from data_splitter import split_data
 from evaluate import linear_evaluation, knn_evaluation
+from lightly.models import ResNetGenerator
 
 
 class WarmupCosineAnnealingLR(_LRScheduler):
@@ -161,7 +162,14 @@ def main():
         input_size=config.INPUT_SIZE
     )
 
-    backbone = nn.Sequential(*list(torchvision.models.resnet18().children())[:-1])
+    # Alternative backbone setup specifically for CIFAR-10
+    # Use the lightly ResNetGenerator to get the correct backbone for CIFAR-10
+    resnet = ResNetGenerator('resnet-18', cifar10=True)
+    # The backbone is the ResNet without its final classification layer
+    backbone = nn.Sequential(*list(resnet.children())[:-1])
+
+    # Original backbone
+    # backbone = nn.Sequential(*list(torchvision.models.resnet18().children())[:-1])
     model = VICReg(backbone, proj_input_dim=config.PROJECTION_INPUT_DIM, proj_hidden_dim=config.PROJECTION_HIDDEN_DIM,
                    proj_output_dim=config.PROJECTION_OUTPUT_DIM).to(device)
     criterion = VICRegLoss(lambda_=config.LAMBDA, mu=config.MU, nu=config.NU)
