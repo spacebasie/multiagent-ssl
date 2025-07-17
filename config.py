@@ -42,3 +42,7 @@ EVAL_EPOCHS = 50
 KNN_K = 200
 KNN_TEMPERATURE = 0.1
 EVAL_EVERY = 5
+
+
+# --- Graph Parameters ---
+NETWORK_TOPOLOGY = 'ring' # Options: 'ring', 'fully_connected', 'random'

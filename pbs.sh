@@ -36,9 +36,9 @@ source ~/venv/venv25/bin/activate
 # These arguments will override the defaults in config.py.
 echo "Starting Python script..."
 python main.py \
-    --num_agents 20 \
+    --num_agents 5 \
     --comm_rounds 200 \
-    --local_epochs 4 \
+    --local_epochs 2 \
     --alpha 100 \
     --eval_every 5 \
 
