@@ -37,9 +37,9 @@ source ~/venv/venv25/bin/activate
 echo "Starting Python script..."
 python main.py \
     --num_agents 20 \
-    --comm_rounds 100 \
-    --local_epochs 2 \
-    --alpha 2 \
+    --comm_rounds 200 \
+    --local_epochs 1 \
+    --alpha 100 \
     --eval_every 5 \
 
 echo "Job finished at $(date)"
