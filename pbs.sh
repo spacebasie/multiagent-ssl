@@ -38,7 +38,7 @@ echo "Starting Python script..."
 python main.py \
     --num_agents 20 \
     --comm_rounds 200 \
-    --local_epochs 1 \
+    --local_epochs 4 \
     --alpha 100 \
     --eval_every 5 \
 
