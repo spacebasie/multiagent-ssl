@@ -9,7 +9,7 @@
 # Request computing resources. This is a crucial step.
 # We are requesting 1 node, 8 CPU cores, 32GB of memory, and 1 GPU.
 # The GPU is essential for deep learning. 8 CPUs will help with data loading.
-#PBS -l select=1:ncpus=4:mem=32gb:ngpus=1
+#PBS -l select=1:ncpus=4:mem=16gb:ngpus=1
 
 # Set the maximum walltime for the job (e.g., 4 hours).
 # The job will be terminated if it runs longer than this.
