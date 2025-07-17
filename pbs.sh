@@ -36,8 +36,8 @@ source ~/venv/venv25/bin/activate
 # These arguments will override the defaults in config.py.
 echo "Starting Python script..."
 python main.py \
-    --'decentralized' \
-    --'star' \
+    --model 'decentralized' \
+    --topology 'star' \
     --num_agents 5 \
     --comm_rounds 10 \
     --local_epochs 1 \
