@@ -37,7 +37,7 @@ source ~/venv/venv25/bin/activate
 echo "Starting Python script..."
 python main.py \
     --model 'decentralized' \
-    --topology 'star' \
+    --topology 'ring' \
     --num_agents 5 \
     --comm_rounds 10 \
     --local_epochs 1 \
