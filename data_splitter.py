@@ -84,3 +84,39 @@ def split_data(dataset: Dataset, num_agents: int, non_iid_alpha: float) -> list[
 
     print("Data splitting complete.")
     return agent_datasets
+
+
+def get_domain_shift_dataloaders(
+    dataset_name: str,
+    dataset_path: str,
+    batch_size: int,
+    num_workers: int,
+    input_size: int,
+    num_agents: int,
+    agent_transforms: list
+):
+    """
+    Splits the dataset evenly and applies a different transform to each agent's data.
+    agent_transforms: list of torchvision transforms, one per agent.
+    """
+    if dataset_name == 'cifar10':
+        DatasetClass = torchvision.datasets.CIFAR10
+    elif dataset_name == 'cifar100':
+        DatasetClass = torchvision.datasets.CIFAR100
+    else:
+        raise ValueError("Unknown dataset.")
+
+    full_dataset = DatasetClass(root=dataset_path, download=True, train=True)
+    total_len = len(full_dataset)
+    indices = torch.randperm(total_len)
+    split_size = total_len // num_agents
+
+    agent_dataloaders = []
+    for i in range(num_agents):
+        start = i * split_size
+        end = (i + 1) * split_size if i < num_agents - 1 else total_len
+        agent_subset = torch.utils.data.Subset(full_dataset, indices[start:end])
+        # Set the transform for this agent's subset
+        agent_subset.dataset.transform = agent_transforms[i]
+        agent_dataloaders.append(DataLoader(agent_subset, batch_size=batch_size, shuffle=True, num_workers=num_workers))
+    return agent_dataloaders
