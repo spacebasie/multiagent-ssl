@@ -45,7 +45,10 @@ class PreTransform(nn.Module):
 def parse_arguments():
     """Parses command-line arguments for both modes."""
     parser = argparse.ArgumentParser(description="Unified VICReg Training Pipeline with W&B")
-    parser.add_argument('--mode', type=str, default='federated', choices=['centralized', 'federated', 'decentralized'])
+    parser.add_argument('--mode', type=str, default='centralized', choices=['centralized', 'federated', 'decentralized'])
+    parser.add_argument('--heterogeneity_type', type=str, default='label_skew',
+                        choices=['label_skew', 'domain_shift'],
+                        help='The type of data heterogeneity for decentralized mode.')
     parser.add_argument('--topology', type=str, default=config.NETWORK_TOPOLOGY, choices=['ring', 'fully_connected', 'random'])
     parser.add_argument('--num_agents', type=int, default=config.NUM_AGENTS)
     parser.add_argument('--comm_rounds', type=int, default=config.COMMUNICATION_ROUNDS)
