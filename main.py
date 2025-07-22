@@ -6,7 +6,6 @@ Main script to run the VICReg self-supervised learning pipeline.
 
 import torch
 import torchvision
-from torchvision.transforms import v2
 from torch import nn
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import _LRScheduler
@@ -24,6 +23,7 @@ from network import set_network_topology, gossip_average
 from training import agent_update, aggregate_models, get_consensus_model, train_one_epoch_centralized
 from decentralized_training import decentralized_personalized_training
 from lightly.transforms.vicreg_transform import VICRegTransform
+import torchvision.transforms as T
 
 class PreTransform(nn.Module):
     """
@@ -218,14 +218,11 @@ def main():
             vicreg_transform = VICRegTransform(input_size=config.INPUT_SIZE)
 
             domain_shifts = [
-                v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)]),  # Base (clean)
-                v2.Compose([v2.GaussianBlur(kernel_size=5, sigma=(1.0, 2.0)), v2.ToImage(),
-                            v2.ToDtype(torch.float32, scale=True)]),
-                v2.Compose([v2.RandomRotation(degrees=90), v2.ToImage(), v2.ToDtype(torch.float32, scale=True)]),
-                v2.Compose([v2.ColorJitter(brightness=0.5, contrast=0.5), v2.ToImage(),
-                            v2.ToDtype(torch.float32, scale=True)]),
-                v2.Compose(
-                    [v2.ToImage(), v2.ToDtype(torch.float32, scale=True), v2.RandomErasing(p=0.75, scale=(0.02, 0.1))]),
+                T.Compose([]),  # Base (clean) - does nothing to the PIL image
+                T.GaussianBlur(kernel_size=5, sigma=(1.0, 2.0)),
+                T.RandomRotation(degrees=90),
+                T.ColorJitter(brightness=0.5, contrast=0.5),
+                T.RandomPerspective(distortion_scale=0.5, p=1.0),  # Replaced RandomErasing
             ]
 
             # Cycle through the defined shifts to cover all agents
