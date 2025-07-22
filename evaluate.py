@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def linear_evaluation(model, proj_output_dim, train_loader, test_loader, epochs, device):
+def linear_evaluation(model, proj_output_dim, train_loader, test_loader, epochs, device, agent_id=None):
     """Runs the linear evaluation protocol on the frozen backbone."""
     print("\n--- Starting Linear Evaluation ---")
     for param in model.backbone.parameters():
