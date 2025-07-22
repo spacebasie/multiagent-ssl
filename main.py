@@ -21,7 +21,7 @@ from data import get_dataloaders
 from data_splitter import split_data, get_domain_shift_dataloaders
 from evaluate import linear_evaluation, knn_evaluation
 from network import set_network_topology, gossip_average
-from training import agent_update, aggregate_models, get_consensus_model
+from training import agent_update, aggregate_models, get_consensus_model, train_one_epoch_centralized
 from decentralized_training import decentralized_personalized_training
 from lightly.transforms.vicreg_transform import VICRegTransform
 

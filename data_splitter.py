@@ -9,6 +9,7 @@ import torch
 import numpy as np
 from torch.utils.data import Subset, Dataset, DataLoader
 from torchvision.datasets import CIFAR10
+import copy
 
 
 def _get_dataset_labels(dataset: Dataset) -> np.ndarray:
