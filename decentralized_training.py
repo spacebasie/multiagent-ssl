@@ -1,51 +1,104 @@
 # decentralized_training.py
 
-import copy
-from torch.utils.data import DataLoader
+"""
+Contains the training and evaluation loop for decentralized personalized learning,
+specifically for the domain adaptation (Path 2) experiment.
+"""
+
 from evaluate import linear_evaluation
-from training import agent_update
+from training import agent_update, get_consensus_model
 from network import gossip_average
+import wandb
 
 def decentralized_personalized_training(
     agent_models,
-    agent_dataloaders,
+    agent_train_dataloaders,
+    agent_test_dataloaders,  # List of domain-specific test loaders
     adj_matrix,
     criterion,
     device,
-    test_loaders,  # List of domain-specific test loaders, one per agent
     comm_rounds,
     local_epochs,
     eval_every,
-    wandb=None
+    proj_input_dim,
+    eval_epochs
 ):
     """
     Decentralized training with per-agent domain adaptation and personalized evaluation.
     Each agent is evaluated on its own domain-specific test set.
+
+    Args:
+        agent_models (list): List of agent models.
+        agent_train_dataloaders (list): List of agent-specific training dataloaders.
+        agent_test_dataloaders (list): List of agent-specific test dataloaders.
+        adj_matrix (np.ndarray): The network adjacency matrix.
+        criterion: The loss function.
+        device (str): The device to train on.
+        comm_rounds (int): Total number of communication rounds.
+        local_epochs (int): Number of local training epochs per round.
+        eval_every (int): Frequency of evaluation rounds.
+        proj_input_dim (int): The input dimension of the projection head.
+        eval_epochs (int): Number of epochs for linear evaluation.
     """
     num_agents = len(agent_models)
     for round_num in range(comm_rounds):
         print(f"\n--- Round {round_num + 1}/{comm_rounds} ---")
-        # Local training
+        # Local training for each agent
         for i in range(num_agents):
-            if len(agent_dataloaders[i].dataset) > 0:
-                agent_update(agent_models[i], agent_dataloaders[i], local_epochs, criterion, device)
-        # Gossip averaging
-        agent_models = gossip_average(agent_models, adj_matrix)
-        # Optional: log training metrics here
+            if len(agent_train_dataloaders[i].dataset) > 0:
+                print(f"Training Agent {i}...")
+                agent_update(agent_models[i], agent_train_dataloaders[i], local_epochs, criterion, device)
 
-    # Personalized evaluation for each agent
-    results = {}
+        # Gossip averaging communication step
+        print("Performing gossip averaging...")
+        agent_models = gossip_average(agent_models, adj_matrix)
+
+        # --- Personalized Evaluation ---
+        if (round_num + 1) % eval_every == 0:
+            print(f"\n--- Evaluating Personalized Models at Round {round_num + 1} ---")
+            total_acc = 0
+            for i in range(num_agents):
+                # Evaluate each agent's model on its OWN domain-specific test data
+                acc = linear_evaluation(
+                    model=agent_models[i],
+                    proj_output_dim=proj_input_dim,
+                    train_loader=agent_train_dataloaders[i], # Use agent's own train loader
+                    test_loader=agent_test_dataloaders[i],     # Use agent's own test loader
+                    epochs=eval_epochs,
+                    device=device,
+                    agent_id=i # Pass agent_id for logging
+                )
+                total_acc += acc
+                wandb.log({f"eval/agent_{i}_linear_accuracy": acc}, step=round_num + 1)
+
+            avg_acc = total_acc / num_agents
+            print(f"Average Personalized Linear Test Accuracy: {avg_acc:.2f}%")
+            wandb.log({"eval/avg_personalized_accuracy": avg_acc}, step=round_num + 1)
+
+            # Also evaluate the consensus model on a global test set for comparison
+            print("\n--- Evaluating Consensus Model on Global Test Set ---")
+            # Note: This requires a global test loader, which we can create in main.py
+            # For now, we'll just log the personalized results which are the focus of this path.
+            consensus_model = get_consensus_model(agent_models, device)
+            if consensus_model:
+                # You would need a global test loader here if you want to run this
+                pass # knn_acc = knn_evaluation(consensus_model, ...)
+
+    print("\n--- Final Personalized Evaluation ---")
+    final_results = {}
     for i in range(num_agents):
         acc = linear_evaluation(
-            agent_models[i],
-            agent_models[i].projection_head.input_dim,
-            agent_dataloaders[i],  # Use agent's own train loader
-            test_loaders[i],       # Use agent's own test loader
-            epochs=50,
-            device=device
+            model=agent_models[i],
+            proj_output_dim=proj_input_dim,
+            train_loader=agent_train_dataloaders[i],
+            test_loader=agent_test_dataloaders[i],
+            epochs=eval_epochs,
+            device=device,
+            agent_id=i
         )
-        print(f"Agent {i} | Personalized Linear Test Accuracy: {acc:.2f}%")
-        results[f"agent_{i}_linear_acc"] = acc
-        if wandb:
-            wandb.log({f"agent_{i}/linear_accuracy": acc})
-    return results
+        final_results[f"agent_{i}_final_linear_acc"] = acc
+        wandb.summary[f"agent_{i}_final_linear_accuracy"] = acc
+
+    avg_final_acc = sum(final_results.values()) / len(final_results)
+    wandb.summary["average_final_personalized_accuracy"] = avg_final_acc
+    print(f"\nAverage Final Personalized Accuracy: {avg_final_acc:.2f}%")

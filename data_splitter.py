@@ -7,7 +7,7 @@ Now compatible with both torchvision datasets and LightlyDataset.
 
 import torch
 import numpy as np
-from torch.utils.data import Subset, Dataset
+from torch.utils.data import Subset, Dataset, DataLoader
 from torchvision.datasets import CIFAR10
 
 
@@ -87,36 +87,66 @@ def split_data(dataset: Dataset, num_agents: int, non_iid_alpha: float) -> list[
 
 
 def get_domain_shift_dataloaders(
-    dataset_name: str,
-    dataset_path: str,
-    batch_size: int,
-    num_workers: int,
-    input_size: int,
-    num_agents: int,
-    agent_transforms: list
-):
+        train_dataset: Dataset,
+        test_dataset: Dataset,
+        batch_size: int,
+        num_workers: int,
+        num_agents: int,
+        agent_transforms: list
+) -> tuple[list[DataLoader], list[DataLoader]]:
     """
-    Splits the dataset evenly and applies a different transform to each agent's data.
-    agent_transforms: list of torchvision transforms, one per agent.
+    Creates dataloaders for the domain shift experiment by applying different transforms.
+    This version takes dataset objects as input for better consistency.
     """
-    if dataset_name == 'cifar10':
-        DatasetClass = torchvision.datasets.CIFAR10
-    elif dataset_name == 'cifar100':
-        DatasetClass = torchvision.datasets.CIFAR100
-    else:
-        raise ValueError("Unknown dataset.")
+    print(f"Creating {num_agents} domain-shifted dataloaders...")
+    if len(agent_transforms) != num_agents:
+        raise ValueError(
+            f"The number of agent_transforms ({len(agent_transforms)}) must match num_agents ({num_agents}).")
 
-    full_dataset = DatasetClass(root=dataset_path, download=True, train=True)
-    total_len = len(full_dataset)
-    indices = torch.randperm(total_len)
-    split_size = total_len // num_agents
+    # Split indices evenly for training and test sets
+    train_len = len(train_dataset)
+    train_indices = torch.randperm(train_len).tolist()
+    train_split_size = train_len // num_agents
 
-    agent_dataloaders = []
+    test_len = len(test_dataset)
+    test_indices = torch.randperm(test_len).tolist()
+    test_split_size = test_len // num_agents
+
+    train_dataloaders = []
+    test_dataloaders = []
+
     for i in range(num_agents):
-        start = i * split_size
-        end = (i + 1) * split_size if i < num_agents - 1 else total_len
-        agent_subset = torch.utils.data.Subset(full_dataset, indices[start:end])
-        # Set the transform for this agent's subset
-        agent_subset.dataset.transform = agent_transforms[i]
-        agent_dataloaders.append(DataLoader(agent_subset, batch_size=batch_size, shuffle=True, num_workers=num_workers))
-    return agent_dataloaders
+        # --- Create Training Dataloader for Agent i ---
+        start_train = i * train_split_size
+        end_train = (i + 1) * train_split_size if i < num_agents - 1 else train_len
+        agent_train_indices = train_indices[start_train:end_train]
+
+        # Create a deep copy of the dataset to safely assign a unique transform
+        agent_train_dataset = copy.deepcopy(train_dataset)
+        agent_train_dataset.transform = agent_transforms[i]
+        agent_train_subset = Subset(agent_train_dataset, agent_train_indices)
+        train_dataloaders.append(
+            DataLoader(agent_train_subset, batch_size=batch_size, shuffle=True, num_workers=num_workers, drop_last=True)
+        )
+
+        # --- Create Test Dataloader for Agent i ---
+        start_test = i * test_split_size
+        end_test = (i + 1) * test_split_size if i < num_agents - 1 else test_len
+        agent_test_indices = test_indices[start_test:end_test]
+
+        # The test transform should also match the agent's domain
+        agent_test_dataset = copy.deepcopy(test_dataset)
+        # For evaluation, we only want the domain shift, not the VICReg augmentations.
+        # We assume the agent_transform is a PreTransform object.
+        if hasattr(agent_transforms[i], 'pre_transform'):
+            agent_test_dataset.transform = agent_transforms[i].pre_transform
+        else:  # Fallback if not a PreTransform object
+            agent_test_dataset.transform = agent_transforms[i]
+
+        agent_test_subset = Subset(agent_test_dataset, agent_test_indices)
+        test_dataloaders.append(
+            DataLoader(agent_test_subset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        )
+
+    print("Domain-shifted dataloaders created successfully.")
+    return train_dataloaders, test_dataloaders

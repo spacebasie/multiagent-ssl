@@ -6,6 +6,7 @@ Main script to run the VICReg self-supervised learning pipeline.
 
 import torch
 import torchvision
+from torchvision.transforms import v2
 from torch import nn
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import _LRScheduler
@@ -17,11 +18,29 @@ import wandb
 import config
 from model import VICReg, VICRegLoss
 from data import get_dataloaders
-from data_splitter import split_data
+from data_splitter import split_data, get_domain_shift_dataloaders
 from evaluate import linear_evaluation, knn_evaluation
 from network import set_network_topology, gossip_average
 from training import agent_update, aggregate_models, get_consensus_model
+from decentralized_training import decentralized_personalized_training
+from lightly.transforms.vicreg_transform import VICRegTransform
 
+class PreTransform(nn.Module):
+    """
+    Applies a custom 'pre_transform' before the main transform.
+    This ensures the domain shift happens to the raw image *before* VICReg's augmentation.
+    """
+    def __init__(self, pre_transform, main_transform):
+        super().__init__()
+        self.pre_transform = pre_transform
+        self.main_transform = main_transform
+
+    def __call__(self, x):
+        # 1. Apply the domain-specific transform (e.g., blur) to the raw image first.
+        x = self.pre_transform(x)
+        # 2. Then, apply the standard VICReg augmentation to the corrupted image.
+        x = self.main_transform(x)
+        return x
 
 def parse_arguments():
     """Parses command-line arguments for both modes."""
@@ -89,6 +108,8 @@ def main():
 
     criterion = VICRegLoss(lambda_=config.LAMBDA, mu=config.MU, nu=config.NU)
 
+    final_model_to_eval = None
+
     if args.mode == 'centralized':
         wandb.run.name = f"centralized_{config.DATASET_NAME}_epochs_{args.epochs}"
         optimizer = torch.optim.SGD(global_model.parameters(), lr=config.LEARNING_RATE, momentum=0.9, weight_decay=1e-4)
@@ -113,6 +134,7 @@ def main():
                 knn_acc = knn_evaluation(global_model, train_loader_eval, test_loader_eval, device, config.KNN_K,
                                          config.KNN_TEMPERATURE)
                 wandb.log({"eval/knn_accuracy": knn_acc}, step=epoch + 1)
+        final_model_to_eval = global_model
 
     elif args.mode == 'federated':
         # Federated learning logic
@@ -167,32 +189,95 @@ def main():
         # 2. Initialize N separate agent models
         agent_models = [copy.deepcopy(global_model).to(device) for _ in range(args.num_agents)]
 
-        # 3. Distribute data
-        agent_datasets = split_data(pretrain_dataloader.dataset, args.num_agents, args.alpha)
-        agent_dataloaders = [DataLoader(ds, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS)
-                             for ds in agent_datasets]
+        if args.heterogeneity_type == 'label_skew':
+            agent_datasets = split_data(pretrain_dataloader.dataset, args.num_agents, args.alpha)
+            agent_dataloaders = [
+                DataLoader(ds, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS) for ds in
+                agent_datasets if len(ds) > 0]
 
-        for round_num in range(args.comm_rounds):
-            print(f"\n--- Round {round_num + 1}/{args.comm_rounds} ---")
-
-            # 4. Local training step for each agent on its own model
-            for i in range(args.num_agents):
-                if len(agent_dataloaders[i].dataset) > 0:
+            for round_num in range(args.comm_rounds):
+                print(f"\n--- Round {round_num + 1}/{args.comm_rounds} ---")
+                for i in range(len(agent_dataloaders)):
                     agent_update(agent_models[i], agent_dataloaders[i], args.local_epochs, criterion, device)
+                agent_models = gossip_average(agent_models, adj_matrix)
 
-            # 5. Peer-to-peer communication step
-            agent_models = gossip_average(agent_models, adj_matrix)
+                if (round_num + 1) % args.eval_every == 0:
+                    consensus_model = get_consensus_model(agent_models, device)
+                    if consensus_model:
+                        knn_acc = knn_evaluation(consensus_model, train_loader_eval, test_loader_eval, device,
+                                                 config.KNN_K, config.KNN_TEMPERATURE)
+                        wandb.log({"eval/consensus_knn_accuracy": knn_acc}, step=round_num + 1)
 
-            # 6. Evaluation (on the average/consensus model)
-            if (round_num + 1) % args.eval_every == 0:
-                consensus_model = get_consensus_model(agent_models, device)
-                if consensus_model:
-                    knn_acc = knn_evaluation(consensus_model, train_loader_eval, test_loader_eval, device, config.KNN_K,
-                                             config.KNN_TEMPERATURE)
-                    wandb.log({"eval/knn_accuracy": knn_acc}, step=round_num + 1)
+            final_model_to_eval = get_consensus_model(agent_models, device)
+
+            # --- Sub-mode: Domain Shift with Personalized Evaluation ---
+        elif args.heterogeneity_type == 'domain_shift':
+            vicreg_transform = VICRegTransform(input_size=config.INPUT_SIZE)
+
+            domain_shifts = [
+                v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)]),  # Base (clean)
+                v2.Compose([v2.GaussianBlur(kernel_size=5, sigma=(1.0, 2.0)), v2.ToImage(),
+                            v2.ToDtype(torch.float32, scale=True)]),
+                v2.Compose([v2.RandomRotation(degrees=90), v2.ToImage(), v2.ToDtype(torch.float32, scale=True)]),
+                v2.Compose([v2.ColorJitter(brightness=0.5, contrast=0.5), v2.ToImage(),
+                            v2.ToDtype(torch.float32, scale=True)]),
+                v2.Compose(
+                    [v2.ToImage(), v2.ToDtype(torch.float32, scale=True), v2.RandomErasing(p=0.75, scale=(0.02, 0.1))]),
+            ]
+
+            # Cycle through the defined shifts to cover all agents
+            final_domain_shifts = []
+            for i in range(args.num_agents):
+                shift_to_apply = domain_shifts[i % len(domain_shifts)]
+                final_domain_shifts.append(shift_to_apply)
+
+            agent_specific_transforms = [
+                PreTransform(pre_transform=ds, main_transform=vicreg_transform) for ds in final_domain_shifts
+            ]
+
+            agent_train_dataloaders, agent_test_dataloaders = get_domain_shift_dataloaders(
+                train_dataset=pretrain_dataloader.dataset,
+                test_dataset=test_loader_eval.dataset,
+                batch_size=config.BATCH_SIZE,
+                num_workers=config.NUM_WORKERS,
+                num_agents=args.num_agents,
+                agent_transforms=agent_specific_transforms
+            )
+
+            decentralized_personalized_training(
+                agent_models=agent_models, agent_train_dataloaders=agent_train_dataloaders,
+                agent_test_dataloaders=agent_test_dataloaders, adj_matrix=adj_matrix,
+                criterion=criterion, device=device, comm_rounds=args.comm_rounds,
+                local_epochs=args.local_epochs, eval_every=args.eval_every,
+                proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS
+            )
+            # Final evaluation is handled inside the personalized loop for this mode
+
+        # # 3. Distribute data
+        # agent_datasets = split_data(pretrain_dataloader.dataset, args.num_agents, args.alpha)
+        # agent_dataloaders = [DataLoader(ds, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS)
+        #                      for ds in agent_datasets]
+        #
+        # for round_num in range(args.comm_rounds):
+        #     print(f"\n--- Round {round_num + 1}/{args.comm_rounds} ---")
+        #
+        #     # 4. Local training step for each agent on its own model
+        #     for i in range(args.num_agents):
+        #         if len(agent_dataloaders[i].dataset) > 0:
+        #             agent_update(agent_models[i], agent_dataloaders[i], args.local_epochs, criterion, device)
+        #
+        #     # 5. Peer-to-peer communication step
+        #     agent_models = gossip_average(agent_models, adj_matrix)
+        #
+        #     # 6. Evaluation (on the average/consensus model)
+        #     if (round_num + 1) % args.eval_every == 0:
+        #         consensus_model = get_consensus_model(agent_models, device)
+        #         if consensus_model:
+        #             knn_acc = knn_evaluation(consensus_model, train_loader_eval, test_loader_eval, device, config.KNN_K,
+        #                                      config.KNN_TEMPERATURE)
+        #             wandb.log({"eval/knn_accuracy": knn_acc}, step=round_num + 1)
 
 
-    final_model_to_eval = get_consensus_model(agent_models, device) if args.mode == 'decentralized' else global_model
     if final_model_to_eval:
         print("\n--- Training Finished ---")
         final_linear_acc = linear_evaluation(final_model_to_eval, config.PROJECTION_INPUT_DIM, train_loader_eval,
