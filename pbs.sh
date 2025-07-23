@@ -38,9 +38,9 @@ echo "Starting Python script..."
 python main.py \
     --mode 'federated' \
     --num_agents 5 \
-    --comm_rounds 200 \
+    --comm_rounds 20 \
     --local_epochs 2 \
     --alpha 100 \
-    --eval_every 5 \
+    --eval_every 2 \
 
 echo "Job finished at $(date)"

@@ -73,6 +73,19 @@ def main():
         "learning_rate": config.LEARNING_RATE,
     })
 
+    if args.mode == 'centralized':
+        batch_size = config.BATCH_SIZE
+    else:
+        # For federated/decentralized, divide the global batch size among agents
+        batch_size = config.BATCH_SIZE // args.num_agents
+        # Enforce a minimum batch size for stability
+        if batch_size < 8:
+            print(f"Warning: Calculated batch size ({batch_size}) is too small. Setting to minimum of 8.")
+            batch_size = 8
+
+        # Update args to log the actual batch size used
+    args.batch_size = batch_size
+
     device = config.DEVICE if torch.cuda.is_available() else "cpu"
 
     num_classes = 100 if config.DATASET_NAME == 'cifar100' else 10
@@ -181,6 +194,7 @@ def main():
                 knn_acc = knn_evaluation(global_model, train_loader_eval, test_loader_eval, device, config.KNN_K,
                                          config.KNN_TEMPERATURE)
                 wandb.log({"eval/knn_accuracy": knn_acc}, step=round_num + 1)
+        final_model_to_eval = global_model
 
     elif args.mode == 'decentralized':
         wandb.run.name = f"decentralized_{args.topology}_agents_{args.num_agents}_alpha_{args.alpha}"
