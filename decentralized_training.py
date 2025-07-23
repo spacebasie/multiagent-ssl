@@ -5,10 +5,11 @@ Contains the training and evaluation loop for decentralized personalized learnin
 specifically for the domain adaptation (Path 2) experiment.
 """
 
-from evaluate import linear_evaluation
+from evaluate import linear_evaluation, knn_evaluation
 from training import agent_update, get_consensus_model
 from network import gossip_average
 import wandb
+from config import KNN_TEMPERATURE, KNN_K
 
 def decentralized_personalized_training(
     agent_models,
@@ -87,14 +88,13 @@ def decentralized_personalized_training(
     print("\n--- Final Personalized Evaluation ---")
     final_results = {}
     for i in range(num_agents):
-        acc = linear_evaluation(
+        acc = knn_evaluation(
             model=agent_models[i],
-            proj_output_dim=proj_input_dim,
             train_loader=agent_train_dataloaders[i],
             test_loader=agent_test_dataloaders[i],
-            epochs=eval_epochs,
             device=device,
-            agent_id=i
+            k = KNN_K,
+            temperature = KNN_TEMPERATURE
         )
         final_results[f"agent_{i}_final_linear_acc"] = acc
         wandb.summary[f"agent_{i}_final_linear_accuracy"] = acc

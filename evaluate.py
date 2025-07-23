@@ -17,12 +17,16 @@ def linear_evaluation(model, proj_output_dim, train_loader, test_loader, epochs,
     print("\n--- Starting Linear Evaluation ---")
     for param in model.backbone.parameters():
         param.requires_grad = False
+    model.backbone.eval()
+
     classifier = nn.Linear(proj_output_dim, 10).to(device) # CIFAR-10 has 10 classes or 100 for CIFAR-100
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(classifier.parameters(), lr=0.001)
 
     for epoch in range(epochs):
         for images, labels in train_loader:
+            if isinstance(images, list):
+                images = images[0]
             images, labels = images.to(device), labels.to(device)
             with torch.no_grad():
                 representations = model.forward_backbone(images)
@@ -33,8 +37,11 @@ def linear_evaluation(model, proj_output_dim, train_loader, test_loader, epochs,
             optimizer.zero_grad()
 
     correct, total = 0, 0
+    classifier.eval()
     with torch.no_grad():
         for images, labels in test_loader:
+            if isinstance(images, list):
+                images = images[0]
             images, labels = images.to(device), labels.to(device)
             representations = model.forward_backbone(images)
             predictions = classifier(representations)

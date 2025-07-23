@@ -36,7 +36,9 @@ source ~/venv/venv25/bin/activate
 # These arguments will override the defaults in config.py.
 echo "Starting Python script..."
 python main.py \
-    --mode 'federated' \
+    --mode 'decentralized' \
+    --topology 'ring' \
+    --heterogeneity_type 'domain_shift' \
     --num_agents 5 \
     --comm_rounds 20 \
     --local_epochs 2 \
