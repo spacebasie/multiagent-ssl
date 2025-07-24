@@ -60,6 +60,8 @@ def knn_evaluation(model, train_loader, test_loader, device, k=20, temperature=0
     train_features, train_labels = [], []
     with torch.no_grad():
         for images, labels in train_loader:
+            if isinstance(images, list):
+                images = images[0]
             images = images.to(device)
             features = model.forward_backbone(images)
             train_features.append(features)
