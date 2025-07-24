@@ -94,7 +94,9 @@ def get_domain_shift_dataloaders(
         batch_size: int,
         num_workers: int,
         num_agents: int,
-        agent_transforms: list
+        agent_transforms: list,
+        dataset_config: dict
+
 ) -> tuple[list[DataLoader], list[DataLoader]]:
     """
     Creates dataloaders for the domain shift experiment by applying different transforms.
@@ -120,7 +122,7 @@ def get_domain_shift_dataloaders(
     # Note: Using CIFAR-10 stats. This could be made more general if needed.
     eval_transform = T.Compose([
         T.ToTensor(),
-        T.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2023, 0.1994, 0.2010])
+        T.Normalize(mean=dataset_config['normalize_mean'], std=dataset_config['normalize_std'])
     ])
 
     for i in range(num_agents):
