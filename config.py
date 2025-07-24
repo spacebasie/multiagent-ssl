@@ -45,4 +45,4 @@ EVAL_EVERY = 5
 
 
 # --- Graph Parameters ---
-NETWORK_TOPOLOGY = 'disconnected' # Options: 'ring', 'fully_connected', 'random', 'disconnected'
+NETWORK_TOPOLOGY = 'random' # Options: 'ring', 'fully_connected', 'random', 'disconnected'
