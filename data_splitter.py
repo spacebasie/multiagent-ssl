@@ -9,6 +9,7 @@ import torch
 import numpy as np
 from torch.utils.data import Subset, Dataset, DataLoader
 from torchvision.datasets import CIFAR10
+import torchvision.transforms as T
 import copy
 
 
@@ -97,14 +98,12 @@ def get_domain_shift_dataloaders(
 ) -> tuple[list[DataLoader], list[DataLoader]]:
     """
     Creates dataloaders for the domain shift experiment by applying different transforms.
-    This version takes dataset objects as input for better consistency.
     """
     print(f"Creating {num_agents} domain-shifted dataloaders...")
     if len(agent_transforms) != num_agents:
         raise ValueError(
             f"The number of agent_transforms ({len(agent_transforms)}) must match num_agents ({num_agents}).")
 
-    # Split indices evenly for training and test sets
     train_len = len(train_dataset)
     train_indices = torch.randperm(train_len).tolist()
     train_split_size = train_len // num_agents
@@ -116,13 +115,20 @@ def get_domain_shift_dataloaders(
     train_dataloaders = []
     test_dataloaders = []
 
+    # Define a standard evaluation transform (ToTensor + Normalize)
+    # This will be applied AFTER the domain-specific corruption.
+    # Note: Using CIFAR-10 stats. This could be made more general if needed.
+    eval_transform = T.Compose([
+        T.ToTensor(),
+        T.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2023, 0.1994, 0.2010])
+    ])
+
     for i in range(num_agents):
         # --- Create Training Dataloader for Agent i ---
         start_train = i * train_split_size
         end_train = (i + 1) * train_split_size if i < num_agents - 1 else train_len
         agent_train_indices = train_indices[start_train:end_train]
 
-        # Create a deep copy of the dataset to safely assign a unique transform
         agent_train_dataset = copy.deepcopy(train_dataset)
         agent_train_dataset.transform = agent_transforms[i]
         agent_train_subset = Subset(agent_train_dataset, agent_train_indices)
@@ -135,14 +141,24 @@ def get_domain_shift_dataloaders(
         end_test = (i + 1) * test_split_size if i < num_agents - 1 else test_len
         agent_test_indices = test_indices[start_test:end_test]
 
-        # The test transform should also match the agent's domain
         agent_test_dataset = copy.deepcopy(test_dataset)
-        # For evaluation, we only want the domain shift, not the VICReg augmentations.
-        # We assume the agent_transform is a PreTransform object.
+
+        # --- THE FIX IS HERE ---
+        # 1. Get the agent's specific domain shift (e.g., GaussianBlur).
+        #    We assume the transform is a PreTransform object.
         if hasattr(agent_transforms[i], 'pre_transform'):
-            agent_test_dataset.transform = agent_transforms[i].pre_transform
+            domain_shift_transform = agent_transforms[i].pre_transform
         else:  # Fallback if not a PreTransform object
-            agent_test_dataset.transform = agent_transforms[i]
+            domain_shift_transform = T.Compose([])  # No-op
+
+        # 2. Create a new transform pipeline for the test set that combines
+        #    the domain shift AND the standard evaluation transform.
+        final_test_transform = T.Compose([
+            domain_shift_transform,  # Apply blur/rotation first (PIL -> PIL)
+            eval_transform  # Then convert to tensor and normalize (PIL -> Tensor)
+        ])
+        agent_test_dataset.transform = final_test_transform
+        # --- END OF FIX ---
 
         agent_test_subset = Subset(agent_test_dataset, agent_test_indices)
         test_dataloaders.append(
