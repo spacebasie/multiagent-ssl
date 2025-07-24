@@ -99,13 +99,13 @@ def decentralized_personalized_training(
         final_results[f"agent_{i}_final_knn_acc"] = acc
         wandb.summary[f"agent_{i}_final_knn_accuracy"] = acc
 
-        lin_acc = knn_evaluation(
+        lin_acc = linear_evaluation(
             model=agent_models[i],
+            proj_output_dim=proj_input_dim,
             train_loader=agent_train_dataloaders[i],
             test_loader=agent_test_dataloaders[i],
-            device=device,
-            k=KNN_K,
-            temperature=KNN_TEMPERATURE
+            epochs=eval_epochs,
+            device=device
         )
         lin_final_results[f"agent_{i}_final_linear_acc"] = lin_acc
         wandb.summary[f"agent_{i}_final_linear_accuracy"] = lin_acc
