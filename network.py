@@ -61,6 +61,10 @@ def set_network_topology(topology: str, num_agents: int, random_p_edge: float = 
             else:
                 print("Generated random graph is not connected, retrying...")
 
+    elif topology == 'disconnected':
+        # Each agent is only connected to itself. This effectively disables communication.
+        np.fill_diagonal(adj_matrix, 1)
+
     else:
         raise ValueError(f"Unknown network topology: {topology}. Please use 'ring', 'fully_connected', or 'random'.")
 
