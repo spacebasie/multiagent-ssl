@@ -60,20 +60,19 @@ def decentralized_personalized_training(
             total_acc = 0
             for i in range(num_agents):
                 # Evaluate each agent's model on its OWN domain-specific test data
-                acc = linear_evaluation(
+                acc = knn_evaluation(
                     model=agent_models[i],
-                    proj_output_dim=proj_input_dim,
-                    train_loader=agent_train_dataloaders[i], # Use agent's own train loader
-                    test_loader=agent_test_dataloaders[i],     # Use agent's own test loader
-                    epochs=eval_epochs,
+                    train_loader=agent_train_dataloaders[i],
+                    test_loader=agent_test_dataloaders[i],
                     device=device,
-                    agent_id=i # Pass agent_id for logging
+                    k=KNN_K,
+                    temperature=KNN_TEMPERATURE
                 )
                 total_acc += acc
-                wandb.log({f"eval/agent_{i}_linear_accuracy": acc}, step=round_num + 1)
+                wandb.log({f"eval/agent_{i}_knn_accuracy": acc}, step=round_num + 1)
 
             avg_acc = total_acc / num_agents
-            print(f"Average Personalized Linear Test Accuracy: {avg_acc:.2f}%")
+            print(f"Average Personalized KNN Test Accuracy: {avg_acc:.2f}%")
             wandb.log({"eval/avg_personalized_accuracy": avg_acc}, step=round_num + 1)
 
             # Also evaluate the consensus model on a global test set for comparison
@@ -87,6 +86,7 @@ def decentralized_personalized_training(
 
     print("\n--- Final Personalized Evaluation ---")
     final_results = {}
+    lin_final_results = {}
     for i in range(num_agents):
         acc = knn_evaluation(
             model=agent_models[i],
@@ -96,9 +96,23 @@ def decentralized_personalized_training(
             k = KNN_K,
             temperature = KNN_TEMPERATURE
         )
-        final_results[f"agent_{i}_final_linear_acc"] = acc
-        wandb.summary[f"agent_{i}_final_linear_accuracy"] = acc
+        final_results[f"agent_{i}_final_knn_acc"] = acc
+        wandb.summary[f"agent_{i}_final_knn_accuracy"] = acc
+
+        lin_acc = knn_evaluation(
+            model=agent_models[i],
+            train_loader=agent_train_dataloaders[i],
+            test_loader=agent_test_dataloaders[i],
+            device=device,
+            k=KNN_K,
+            temperature=KNN_TEMPERATURE
+        )
+        lin_final_results[f"agent_{i}_final_linear_acc"] = lin_acc
+        wandb.summary[f"agent_{i}_final_linear_accuracy"] = lin_acc
 
     avg_final_acc = sum(final_results.values()) / len(final_results)
+    avg_final_lin_acc = sum(lin_final_results.values()) / len(lin_final_results)
     wandb.summary["average_final_personalized_accuracy"] = avg_final_acc
+    wandb.summary["average_final_linear_accuracy"] = avg_final_lin_acc
     print(f"\nAverage Final Personalized Accuracy: {avg_final_acc:.2f}%")
+    print(f"Average Final Linear Evaluation Accuracy: {avg_final_lin_acc:.2f}%")
