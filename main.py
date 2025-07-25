@@ -45,8 +45,8 @@ class PreTransform(nn.Module):
 def parse_arguments():
     """Parses command-line arguments for both modes."""
     parser = argparse.ArgumentParser(description="Unified VICReg Training Pipeline with W&B")
-    parser.add_argument('--mode', type=str, default='centralized', choices=['centralized', 'federated', 'decentralized'])
-    parser.add_argument('--dataset', type=str, default='cifar10', choices=['cifar10', 'cifar100', 'fashion_mnist'],)
+    parser.add_argument('--mode', type=str, default='centralized', choices=['centralized', 'federated', 'decentralized', 'disconnected'])
+    parser.add_argument('--dataset', type=str, default='cifar10', choices=['cifar10', 'cifar100', 'fashion_mnist'])
     parser.add_argument('--heterogeneity_type', type=str, default='label_skew',
                         choices=['label_skew', 'domain_shift'],
                         help='The type of data heterogeneity for decentralized mode.')
