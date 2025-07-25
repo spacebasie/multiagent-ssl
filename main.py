@@ -93,7 +93,7 @@ def main():
     num_classes = 100 if config.DATASET_NAME == 'cifar100' else 10
     wandb.config.update({"dataset": config.DATASET_NAME, "num_classes": num_classes})
 
-    pretrain_dataloader, train_loader_eval, test_loader_eval = get_dataloaders(
+    pretrain_dataloader, train_loader_eval, test_loader_eval, dataset_config = get_dataloaders(
         dataset_name=config.DATASET_NAME,
         dataset_path=config.DATASET_PATH,
         batch_size=config.BATCH_SIZE,
