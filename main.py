@@ -96,8 +96,8 @@ def main():
         dataset_name=config.DATASET_NAME,
         dataset_path=config.DATASET_PATH,
         batch_size=config.BATCH_SIZE,
-        num_workers=config.NUM_WORKERS,
-        input_size=config.INPUT_SIZE
+        num_workers=config.NUM_WORKERS#,
+        # input_size=config.INPUT_SIZE
     )
 
     # Alternative backbone setup specifically for CIFAR-10
