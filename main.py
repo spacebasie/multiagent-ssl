@@ -254,10 +254,11 @@ def main():
             agent_train_dataloaders, agent_test_dataloaders = get_domain_shift_dataloaders(
                 train_dataset=pretrain_dataloader.dataset,
                 test_dataset=test_loader_eval.dataset,
-                batch_size=config.BATCH_SIZE,
+                batch_size=batch_size,
                 num_workers=config.NUM_WORKERS,
                 num_agents=args.num_agents,
-                agent_transforms=agent_specific_transforms
+                agent_transforms=agent_specific_transforms,
+                dataset_config=dataset_config
             )
 
             decentralized_personalized_training(
