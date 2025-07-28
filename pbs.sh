@@ -40,7 +40,7 @@ python main.py \
     --topology 'random' \
     --heterogeneity_type 'domain_shift' \
     --num_agents 5 \
-    --comm_rounds 20 \
+    --comm_rounds 40 \
     --local_epochs 1 \
     --alpha 100 \
     --eval_every 2 \
