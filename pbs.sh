@@ -14,7 +14,7 @@
 # Set the maximum walltime for the job (e.g., 4 hours).
 # The job will be terminated if it runs longer than this.
 # Adjust this based on how long you expect your experiment to run.
-#PBS -l walltime=02:00:00
+#PBS -l walltime=04:00:00
 
 # --- Job Execution ---
 
@@ -40,9 +40,9 @@ python main.py \
     --topology 'random' \
     --heterogeneity_type 'domain_shift' \
     --num_agents 5 \
-    --comm_rounds 40 \
+    --comm_rounds 200 \
     --local_epochs 1 \
     --alpha 100 \
-    --eval_every 2 \
+    --eval_every 5 \
 
 echo "Job finished at $(date)"
