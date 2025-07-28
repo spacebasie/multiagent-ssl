@@ -41,7 +41,7 @@ python main.py \
     --heterogeneity_type 'domain_shift' \
     --num_agents 5 \
     --comm_rounds 20 \
-    --local_epochs 2 \
+    --local_epochs 1 \
     --alpha 100 \
     --eval_every 2 \
 
