@@ -37,7 +37,7 @@ source ~/venv/venv25/bin/activate
 echo "Starting Python script..."
 python main.py \
     --mode 'decentralized' \
-    --topology 'random' \
+    --topology 'disconnected' \
     --heterogeneity_type 'domain_shift' \
     --num_agents 5 \
     --comm_rounds 200 \
