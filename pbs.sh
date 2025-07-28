@@ -14,7 +14,7 @@
 # Set the maximum walltime for the job (e.g., 4 hours).
 # The job will be terminated if it runs longer than this.
 # Adjust this based on how long you expect your experiment to run.
-#PBS -l walltime=04:00:00
+#PBS -l walltime=02:00:00
 
 # --- Job Execution ---
 
