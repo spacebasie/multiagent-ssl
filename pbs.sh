@@ -38,11 +38,11 @@ echo "Starting Python script..."
 python main.py \
     --mode 'decentralized' \
     --topology 'disconnected' \
-    --heterogeneity_type 'domain_shift' \
-    --num_agents 5 \
+    --heterogeneity_type 'label_skew' \
+    --num_agents 10 \
     --comm_rounds 200 \
     --local_epochs 1 \
-    --alpha 100 \
+    --alpha 0.5 \
     --eval_every 5 \
 
 echo "Job finished at $(date)"
