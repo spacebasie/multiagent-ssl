@@ -43,6 +43,6 @@ python main.py \
     --comm_rounds 100 \
     --local_epochs 2 \
     --alpha 0.5 \
-    --eval_every 100 \
+    --eval_every 5 \
 
 echo "Job finished at $(date)"
