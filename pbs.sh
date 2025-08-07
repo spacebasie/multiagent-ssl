@@ -42,7 +42,7 @@ python main.py \
     --num_agents 5 \
     --comm_rounds 200 \
     --local_epochs 1 \
-    --alpha 5 \
+    --alpha 10 \
     --eval_every 5 \
 
 echo "Job finished at $(date)"
