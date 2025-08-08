@@ -48,7 +48,7 @@ def parse_arguments():
     parser.add_argument('--mode', type=str, default='centralized', choices=['centralized', 'federated', 'decentralized'])
     parser.add_argument('--dataset', type=str, default='cifar10', choices=['cifar10', 'cifar100', 'fashion_mnist'])
     parser.add_argument('--heterogeneity_type', type=str, default='label_skew',
-                        choices=['label_skew', 'domain_shift'],
+                        choices=['label_skew', 'domain_shift', 'office_random'],
                         help='The type of data heterogeneity for decentralized mode.')
     parser.add_argument('--topology', type=str, default=config.NETWORK_TOPOLOGY, choices=['ring', 'fully_connected', 'random', 'disconnected'],
                         help='Network topology for decentralized mode.')
@@ -269,6 +269,52 @@ def main():
                 proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS
             )
             # Final evaluation is handled inside the personalized loop for this mode
+
+        elif args.heterogeneity_type == 'office_random':
+            from custom_datasets import get_officehome_train_test_loaders
+
+            officehome_transform = torchvision.transforms.Compose([
+                torchvision.transforms.Resize((224, 224)),
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225]),
+            ])
+
+            # Get train/test splits and agent-specific training loaders
+            agent_dataloaders, train_loader_eval, test_loader_eval = get_officehome_train_test_loaders(
+                root_dir=config.DATASET_PATH,
+                num_agents=args.num_agents,
+                batch_size=config.BATCH_SIZE,
+                num_workers=config.NUM_WORKERS,
+                transform=officehome_transform
+            )
+
+            # Decentralized training loop
+            for round_num in range(args.comm_rounds):
+                print(f"\n--- Round {round_num + 1}/{args.comm_rounds} ---")
+
+                # Local updates
+                for i in range(len(agent_dataloaders)):
+                    agent_update(agent_models[i], agent_dataloaders[i], args.local_epochs, criterion, device)
+
+                # Gossip averaging
+                agent_models = gossip_average(agent_models, adj_matrix)
+
+                # Consensus evaluation
+                if (round_num + 1) % args.eval_every == 0:
+                    consensus_model = get_consensus_model(agent_models, device)
+                    if consensus_model:
+                        knn_acc = knn_evaluation(
+                            consensus_model,
+                            train_loader_eval,
+                            test_loader_eval,
+                            device,
+                            config.KNN_K,
+                            config.KNN_TEMPERATURE
+                        )
+                        wandb.log({"eval/consensus_knn_accuracy": knn_acc}, step=round_num + 1)
+
+            final_model_to_eval = get_consensus_model(agent_models, device)
 
         # # 3. Distribute data
         # agent_datasets = split_data(pretrain_dataloader.dataset, args.num_agents, args.alpha)
