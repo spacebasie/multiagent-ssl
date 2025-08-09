@@ -97,6 +97,7 @@ def main():
     device = config.DEVICE if torch.cuda.is_available() else "cpu"
 
     # num_classes = 100 if config.DATASET_NAME == 'cifar100' else 10
+    num_classes = 10
     wandb.config.update({"dataset": config.DATASET_NAME, "num_classes": num_classes})
 
     pretrain_dataloader, train_loader_eval, test_loader_eval, dataset_config = get_dataloaders(
