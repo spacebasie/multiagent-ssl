@@ -4,7 +4,7 @@ import random
 from PIL import Image
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader, Subset, random_split
-
+import torch
 
 class CustomDataset(Dataset):
     """
