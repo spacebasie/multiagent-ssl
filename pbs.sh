@@ -37,7 +37,7 @@ source ~/venv/venv25/bin/activate
 echo "Starting Python script..."
 python main.py \
     --mode 'decentralized' \
-    --dataset 'office_random' \
+    --dataset 'office_home' \
     --topology 'random' \
     --heterogeneity_type 'office_random' \
     --num_agents 5 \
