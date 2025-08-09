@@ -47,7 +47,7 @@ def parse_arguments():
     """Parses command-line arguments for both modes."""
     parser = argparse.ArgumentParser(description="Unified VICReg Training Pipeline with W&B")
     parser.add_argument('--mode', type=str, default='centralized', choices=['centralized', 'federated', 'decentralized'])
-    parser.add_argument('--dataset', type=str, default='cifar10', choices=['cifar10', 'cifar100', 'fashion_mnist'])
+    parser.add_argument('--dataset', type=str, default='cifar10', choices=['cifar10', 'cifar100', 'office_home'])
     parser.add_argument('--heterogeneity_type', type=str, default='label_skew',
                         choices=['label_skew', 'domain_shift', 'office_random'],
                         help='The type of data heterogeneity for decentralized mode.')
@@ -67,7 +67,12 @@ def parse_arguments():
 def main():
     """Main function to execute the pipeline."""
     args = parse_arguments()
-    wandb.init(project="cifar10-runs", config=args)
+    if args.dataset == 'cifar10':
+        wandb.init(project="cifar10-runs", config=args)
+    elif args.dataset == 'cifar100':
+        wandb.init(project="cifar100-runs", config=args)
+    elif args.dataset == 'office_home':
+        wandb.init(project="office_home_runs", config=args)
 
     wandb.config.update({
         "lambda": config.LAMBDA,
