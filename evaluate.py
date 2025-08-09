@@ -117,7 +117,7 @@ def plot_tsne(model, test_loader, device, plot_title="t-SNE Visualization"):
 
     # 2. Apply t-SNE
     print("Running t-SNE...")
-    tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(all_features) - 1), n_iter=1000)
+    tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(all_features) - 1), max_iter=1000)
     tsne_results = tsne.fit_transform(all_features)
     print("t-SNE finished.")
 
