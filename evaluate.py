@@ -8,6 +8,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import wandb
+from sklearn.manifold import TSNE
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -85,3 +86,60 @@ def knn_evaluation(model, train_loader, test_loader, device, k=20, temperature=0
     accuracy = 100 * correct / total
     print(f"Final kNN Test Accuracy: {accuracy:.2f}%")
     return accuracy
+
+
+def plot_tsne(model, test_loader, device, plot_title="t-SNE Visualization"):
+    """
+    Generates and logs a t-SNE plot of the model's representations to W&B.
+    """
+    print(f"\n--- Generating and logging '{plot_title}' to W&B ---")
+    model.eval()
+    all_features = []
+    all_labels = []
+
+    # 1. Get all features and labels from the test set
+    with torch.no_grad():
+        for images, labels in test_loader:
+            images = images.to(device)
+            features = model.forward_backbone(images)
+            all_features.append(features.cpu())
+            all_labels.append(labels.cpu())
+
+    all_features = torch.cat(all_features, dim=0).numpy()
+    all_labels = torch.cat(all_labels, dim=0).numpy()
+
+    # Limit to a subset of data for faster t-SNE, e.g., 2000 samples
+    if len(all_features) > 2000:
+        print("Dataset is large, using a random subset of 2000 points for t-SNE.")
+        indices = np.random.choice(len(all_features), 2000, replace=False)
+        all_features = all_features[indices]
+        all_labels = all_labels[indices]
+
+    # 2. Apply t-SNE
+    print("Running t-SNE...")
+    tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(all_features) - 1), n_iter=1000)
+    tsne_results = tsne.fit_transform(all_features)
+    print("t-SNE finished.")
+
+    # 3. Create the plot
+    fig, ax = plt.subplots(figsize=(12, 10))
+    scatter = ax.scatter(tsne_results[:, 0], tsne_results[:, 1], c=all_labels, cmap='viridis', alpha=0.7)
+
+    # Try to get class names for the legend
+    try:
+        class_names = test_loader.dataset.dataset.classes
+    except AttributeError:
+        class_names = [str(i) for i in range(len(np.unique(all_labels)))]
+
+    legend_elements = scatter.legend_elements()
+    ax.legend(legend_elements[0], class_names, title="Classes")
+
+    ax.set_title(plot_title)
+    ax.set_xlabel('t-SNE Dimension 1')
+    ax.set_ylabel('t-SNE Dimension 2')
+    ax.grid(True)
+
+    # 4. Log the plot to Weights & Biases
+    wandb.log({plot_title: fig})
+    print(f"'{plot_title}' logged to W&B.")
+    plt.close(fig)
