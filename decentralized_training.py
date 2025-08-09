@@ -111,12 +111,12 @@ def decentralized_personalized_training(
         wandb.summary[f"agent_{i}_final_linear_accuracy"] = lin_acc
 
         # Uncomment this to check when I validate the new implementation
-        # plot_tsne(
-        #     model=agent_models[i],
-        #     test_loader=agent_test_dataloaders[i],
-        #     device=device,
-        #     plot_title=f"t-SNE for Agent {i}"
-        # )
+        plot_tsne(
+            model=agent_models[i],
+            test_loader=agent_test_dataloaders[i],
+            device=device,
+            plot_title=f"t-SNE for Agent {i}"
+        )
 
     avg_final_acc = sum(final_results.values()) / len(final_results)
     avg_final_lin_acc = sum(lin_final_results.values()) / len(lin_final_results)
