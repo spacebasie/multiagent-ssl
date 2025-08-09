@@ -274,22 +274,27 @@ def main():
             # Final evaluation is handled inside the personalized loop for this mode
 
 
-        elif args.heterogeneity_type == 'office_random':
-            officehome_transform = torchvision.transforms.Compose([
-                torchvision.transforms.Resize((224, 224)),
-                torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                 std=[0.229, 0.224, 0.225]),
-            ])
 
+        elif args.heterogeneity_type == 'office_random':
+            # Define the VICReg transform for self-supervised training (creates 2 views)
+            vicreg_transform_officehome = VICRegTransform(input_size=224)
+            # Define the standard evaluation transform (creates 1 view)
+            eval_transform_officehome = T.Compose([
+                T.Resize((224, 224)),
+                T.ToTensor(),
+                T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ])
+            # Get the dataloaders, passing the correct transform for training and evaluation
             agent_train_dataloaders, agent_test_dataloaders, _, _ = get_officehome_train_test_loaders(
                 root_dir="datasets/OfficeHomeDataset",
                 num_agents=args.num_agents,
                 batch_size=args.batch_size,
                 num_workers=config.NUM_WORKERS,
-                transform=officehome_transform
+                train_transform=vicreg_transform_officehome,  # Use VICReg transform here
+                eval_transform=eval_transform_officehome,  # Use standard transform here
+                num_classes=args.num_classes
             )
-
+            # This call remains the same, as it correctly handles personalized training
             decentralized_personalized_training(
                 agent_models=agent_models, agent_train_dataloaders=agent_train_dataloaders,
                 agent_test_dataloaders=agent_test_dataloaders, adj_matrix=adj_matrix,
