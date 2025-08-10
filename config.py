@@ -40,7 +40,7 @@ NU = 1.0
 # --- Evaluation Parameters ---
 EVAL_EPOCHS = 50
 KNN_K = 20
-KNN_TEMPERATURE = 0.05
+KNN_TEMPERATURE = 0.1
 EVAL_EVERY = 5
 
 
