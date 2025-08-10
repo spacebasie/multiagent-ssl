@@ -108,7 +108,7 @@ def plot_tsne(model, test_loader, device, plot_title="t-SNE Visualization"):
     all_features = torch.cat(all_features, dim=0).numpy()
     all_labels = torch.cat(all_labels, dim=0).numpy()
 
-    # Limit to a subset of data for faster t-SNE, e.g., 2000 samples
+    # Limit to a subset of data for faster t-SNE
     if len(all_features) > 2000:
         print("Dataset is large, using a random subset of 2000 points for t-SNE.")
         indices = np.random.choice(len(all_features), 2000, replace=False)
@@ -125,14 +125,28 @@ def plot_tsne(model, test_loader, device, plot_title="t-SNE Visualization"):
     fig, ax = plt.subplots(figsize=(12, 10))
     scatter = ax.scatter(tsne_results[:, 0], tsne_results[:, 1], c=all_labels, cmap='viridis', alpha=0.7)
 
-    # Try to get class names for the legend
-    try:
-        class_names = test_loader.dataset.dataset.classes
-    except AttributeError:
-        class_names = [str(i) for i in range(len(np.unique(all_labels)))]
+    # --- START: Corrected Legend Logic ---
+    class_names = None
+    # This robustly searches for the .classes attribute in nested dataset objects
+    dataset = test_loader.dataset
+    while hasattr(dataset, 'dataset'):
+        if hasattr(dataset, 'classes') and dataset.classes:
+            class_names = dataset.classes
+            break
+        dataset = dataset.dataset
+    if hasattr(dataset, 'classes') and dataset.classes:
+        class_names = dataset.classes
 
-    legend_elements = scatter.legend_elements()
-    ax.legend(legend_elements[0], class_names, title="Classes")
+    if class_names:
+        # If we found class names, create a proper legend
+        legend_elements = scatter.legend_elements()
+        # Ensure we don't have more legend entries than classes
+        num_legend_entries = len(legend_elements[0])
+        ax.legend(legend_elements[0], class_names[:num_legend_entries], title="Classes")
+    else:
+        # Fallback if no class names are found
+        ax.legend(*scatter.legend_elements(), title="Classes")
+    # --- END: Corrected Legend Logic ---
 
     ax.set_title(plot_title)
     ax.set_xlabel('t-SNE Dimension 1')

@@ -41,10 +41,10 @@ python main.py \
     --topology 'random' \
     --heterogeneity_type 'office_random' \
     --num_agents 5 \
-    --comm_rounds 100 \
+    --comm_rounds 10 \
     --local_epochs 2 \
     --alpha 100 \
-    --eval_every 5 \
+    --eval_every 2 \
     --num_classes 10 \
 
 echo "Job finished at $(date)"
