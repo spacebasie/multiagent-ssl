@@ -45,6 +45,6 @@ python main.py \
     --local_epochs 2 \
     --alpha 100 \
     --eval_every 2 \
-    --num_classes 10 \
+    --num_classes 20 \
 
 echo "Job finished at $(date)"

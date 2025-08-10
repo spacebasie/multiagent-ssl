@@ -45,11 +45,21 @@ def decentralized_personalized_training(
     num_agents = len(agent_models)
     for round_num in range(comm_rounds):
         print(f"\n--- Round {round_num + 1}/{comm_rounds} ---")
+        round_agg_loss = {}
         # Local training for each agent
         for i in range(num_agents):
             if len(agent_train_dataloaders[i].dataset) > 0:
                 print(f"Training Agent {i}...")
-                agent_update(agent_models[i], agent_train_dataloaders[i], local_epochs, criterion, device, learning_rate)
+                loss_dict = agent_update(agent_models[i], agent_train_dataloaders[i], local_epochs, criterion, device, learning_rate)
+                if loss_dict:
+                    for k, v in loss_dict.items():
+                        round_agg_loss[k] = round_agg_loss.get(k, 0.0) + v
+
+        if round_agg_loss:
+            num_successful_agents = num_agents  # Assuming all agents train successfully
+            for k in round_agg_loss:
+                round_agg_loss[k] /= num_successful_agents
+            wandb.log({f"train/avg_{k}": v for k, v in round_agg_loss.items()}, step=round_num + 1)
 
         # Gossip averaging communication step
         print("Performing gossip averaging...")
