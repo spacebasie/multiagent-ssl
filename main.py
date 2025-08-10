@@ -96,17 +96,51 @@ def main():
 
     device = config.DEVICE if torch.cuda.is_available() else "cpu"
 
-    # num_classes = 100 if config.DATASET_NAME == 'cifar100' else 10
-    num_classes = 10
-    wandb.config.update({"dataset": config.DATASET_NAME, "num_classes": num_classes})
+    dataset_config = None
+    pretrain_dataloader = None
+    agent_train_dataloaders = None
+    agent_test_dataloaders = None
 
-    pretrain_dataloader, train_loader_eval, test_loader_eval, dataset_config = get_dataloaders(
-        dataset_name=config.DATASET_NAME,
-        dataset_path=config.DATASET_PATH,
-        batch_size=config.BATCH_SIZE,
-        num_workers=config.NUM_WORKERS#,
-        # input_size=config.INPUT_SIZE
-    )
+    if args.dataset == 'office_home':
+        wandb.config.update({"dataset": "office_home"})
+        # Define the two separate transforms needed for OfficeHome
+        vicreg_transform_officehome = VICRegTransform(input_size=224)
+        eval_transform_officehome = T.Compose([
+            T.Resize((224, 224)),
+            T.ToTensor(),
+            T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+
+        agent_train_dataloaders, agent_test_dataloaders, train_loader_eval, test_loader_eval = get_officehome_train_test_loaders(
+            root_dir="datasets/OfficeHomeDataset",
+            num_agents=args.num_agents,
+            batch_size=args.batch_size,
+            num_workers=config.NUM_WORKERS,
+            train_transform=vicreg_transform_officehome,
+            eval_transform=eval_transform_officehome,
+            num_classes=args.num_classes
+        )
+
+        if args.mode == 'centralized':
+            # For centralized mode, the pretrain_dataloader uses the full training set with VICReg transforms
+            pretrain_dataset = train_loader_eval.dataset
+            pretrain_dataset.transform = vicreg_transform_officehome
+            pretrain_dataloader = DataLoader(
+                pretrain_dataset,
+                batch_size=args.batch_size,
+                shuffle=True,
+                num_workers=config.NUM_WORKERS
+            )
+    else:  # This block handles cifar10, cifar100, etc.
+        num_classes = 100 if args.dataset == 'cifar100' else 10
+        wandb.config.update({"dataset": args.dataset, "num_classes": num_classes})
+
+        pretrain_dataloader, train_loader_eval, test_loader_eval, dataset_config = get_dataloaders(
+            dataset_name=args.dataset,
+            dataset_path=config.DATASET_PATH,
+            batch_size=args.batch_size,
+            num_workers=config.NUM_WORKERS
+        )
 
     # Alternative backbone setup specifically for CIFAR-10
     # 1. Create a standard torchvision ResNet-18
@@ -205,69 +239,55 @@ def main():
                 wandb.log({"eval/knn_accuracy": knn_acc}, step=round_num + 1)
         final_model_to_eval = global_model
 
+
     elif args.mode == 'decentralized':
-        wandb.run.name = f"decentralized_{args.topology}_agents_{args.num_agents}_alpha_{args.alpha}"
-        print(f"--- Starting Decentralized P2P Simulation ({args.topology}) ---")
-
-        # 1. Create the network topology
+        wandb.run.name = f"decentralized_{args.topology}_agents_{args.num_agents}_hetero_{args.heterogeneity_type}"
         adj_matrix = set_network_topology(args.topology, args.num_agents)
-
-        # 2. Initialize N separate agent models
         agent_models = [copy.deepcopy(global_model).to(device) for _ in range(args.num_agents)]
-
         if args.heterogeneity_type == 'label_skew':
+            # This logic correctly uses the pre-loaded CIFAR data with a non-IID split.
             agent_datasets = split_data(pretrain_dataloader.dataset, args.num_agents, args.alpha)
             agent_dataloaders = [
-                DataLoader(ds, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS) for ds in
+                DataLoader(ds, batch_size=args.batch_size, shuffle=True, num_workers=config.NUM_WORKERS) for ds in
                 agent_datasets if len(ds) > 0]
-
             for round_num in range(args.comm_rounds):
                 print(f"\n--- Round {round_num + 1}/{args.comm_rounds} ---")
                 for i in range(len(agent_dataloaders)):
-                    agent_update(agent_models[i], agent_dataloaders[i], args.local_epochs, criterion, device, config.LEARNING_RATE)
+                    agent_update(agent_models[i], agent_dataloaders[i], args.local_epochs, criterion, device,
+                                 config.LEARNING_RATE)
                 agent_models = gossip_average(agent_models, adj_matrix)
-
                 if (round_num + 1) % args.eval_every == 0:
                     consensus_model = get_consensus_model(agent_models, device)
                     if consensus_model:
                         knn_acc = knn_evaluation(consensus_model, train_loader_eval, test_loader_eval, device,
                                                  config.KNN_K, config.KNN_TEMPERATURE)
                         wandb.log({"eval/consensus_knn_accuracy": knn_acc}, step=round_num + 1)
-
             final_model_to_eval = get_consensus_model(agent_models, device)
 
-            # --- Sub-mode: Domain Shift with Personalized Evaluation ---
         elif args.heterogeneity_type == 'domain_shift':
+            # This block correctly creates artificial domains for the CIFAR-10 dataset.
             vicreg_transform = VICRegTransform(input_size=config.INPUT_SIZE)
-
             domain_shifts = [
-                T.Compose([]),  # Base (clean) - does nothing to the PIL image
+                T.Compose([]),  # Base (clean)
                 T.GaussianBlur(kernel_size=5, sigma=(1.0, 2.0)),
                 T.RandomRotation(degrees=90),
                 T.ColorJitter(brightness=0.5, contrast=0.5),
-                T.RandomPerspective(distortion_scale=0.5, p=1.0),  # Replaced RandomErasing
+                T.RandomPerspective(distortion_scale=0.5, p=1.0),
             ]
-
-            # Cycle through the defined shifts to cover all agents
-            final_domain_shifts = []
-            for i in range(args.num_agents):
-                shift_to_apply = domain_shifts[i % len(domain_shifts)]
-                final_domain_shifts.append(shift_to_apply)
-
+            final_domain_shifts = [domain_shifts[i % len(domain_shifts)] for i in range(args.num_agents)]
             agent_specific_transforms = [
                 PreTransform(pre_transform=ds, main_transform=vicreg_transform) for ds in final_domain_shifts
             ]
-
+            # This uses the pre-loaded CIFAR dataloaders from the top of the script.
             agent_train_dataloaders, agent_test_dataloaders = get_domain_shift_dataloaders(
                 train_dataset=pretrain_dataloader.dataset,
                 test_dataset=test_loader_eval.dataset,
-                batch_size=batch_size,
+                batch_size=args.batch_size,
                 num_workers=config.NUM_WORKERS,
                 num_agents=args.num_agents,
                 agent_transforms=agent_specific_transforms,
                 dataset_config=dataset_config
             )
-
             decentralized_personalized_training(
                 agent_models=agent_models, agent_train_dataloaders=agent_train_dataloaders,
                 agent_test_dataloaders=agent_test_dataloaders, adj_matrix=adj_matrix,
@@ -276,30 +296,10 @@ def main():
                 proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS,
                 learning_rate=config.LEARNING_RATE
             )
-            # Final evaluation is handled inside the personalized loop for this mode
-
-
+            final_model_to_eval = None
 
         elif args.heterogeneity_type == 'office_random':
-            # Define the VICReg transform for self-supervised training (creates 2 views)
-            vicreg_transform_officehome = VICRegTransform(input_size=224)
-            # Define the standard evaluation transform (creates 1 view)
-            eval_transform_officehome = T.Compose([
-                T.Resize((224, 224)),
-                T.ToTensor(),
-                T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-            ])
-            # Get the dataloaders, passing the correct transform for training and evaluation
-            agent_train_dataloaders, agent_test_dataloaders, _, _ = get_officehome_train_test_loaders(
-                root_dir="datasets/OfficeHomeDataset",
-                num_agents=args.num_agents,
-                batch_size=args.batch_size,
-                num_workers=config.NUM_WORKERS,
-                train_transform=vicreg_transform_officehome,  # Use VICReg transform here
-                eval_transform=eval_transform_officehome,  # Use standard transform here
-                num_classes=args.num_classes
-            )
-            # This call remains the same, as it correctly handles personalized training
+            # This block now correctly uses the OfficeHome dataloaders that were prepared at the start.
             decentralized_personalized_training(
                 agent_models=agent_models, agent_train_dataloaders=agent_train_dataloaders,
                 agent_test_dataloaders=agent_test_dataloaders, adj_matrix=adj_matrix,
@@ -308,31 +308,7 @@ def main():
                 proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS,
                 learning_rate=config.LEARNING_RATE
             )
-
-        # # 3. Distribute data
-        # agent_datasets = split_data(pretrain_dataloader.dataset, args.num_agents, args.alpha)
-        # agent_dataloaders = [DataLoader(ds, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS)
-        #                      for ds in agent_datasets]
-        #
-        # for round_num in range(args.comm_rounds):
-        #     print(f"\n--- Round {round_num + 1}/{args.comm_rounds} ---")
-        #
-        #     # 4. Local training step for each agent on its own model
-        #     for i in range(args.num_agents):
-        #         if len(agent_dataloaders[i].dataset) > 0:
-        #             agent_update(agent_models[i], agent_dataloaders[i], args.local_epochs, criterion, device)
-        #
-        #     # 5. Peer-to-peer communication step
-        #     agent_models = gossip_average(agent_models, adj_matrix)
-        #
-        #     # 6. Evaluation (on the average/consensus model)
-        #     if (round_num + 1) % args.eval_every == 0:
-        #         consensus_model = get_consensus_model(agent_models, device)
-        #         if consensus_model:
-        #             knn_acc = knn_evaluation(consensus_model, train_loader_eval, test_loader_eval, device, config.KNN_K,
-        #                                      config.KNN_TEMPERATURE)
-        #             wandb.log({"eval/knn_accuracy": knn_acc}, step=round_num + 1)
-
+            final_model_to_eval = None
 
     if final_model_to_eval:
         print("\n--- Training Finished ---")
