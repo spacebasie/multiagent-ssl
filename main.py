@@ -180,7 +180,7 @@ def main():
             # 3. Iterate over the active dataloaders, not a fixed range
             for agent_dataloader in agent_dataloaders:
                 agent_model = copy.deepcopy(global_model).to(device)
-                loss_dict = agent_update(agent_model, agent_dataloader, args.local_epochs, criterion, device)
+                loss_dict = agent_update(agent_model, agent_dataloader, args.local_epochs, criterion, device, config.LEARNING_RATE)
 
                 if loss_dict:  # Check if the agent trained successfully
                     agent_models.append(agent_model)
@@ -224,7 +224,7 @@ def main():
             for round_num in range(args.comm_rounds):
                 print(f"\n--- Round {round_num + 1}/{args.comm_rounds} ---")
                 for i in range(len(agent_dataloaders)):
-                    agent_update(agent_models[i], agent_dataloaders[i], args.local_epochs, criterion, device)
+                    agent_update(agent_models[i], agent_dataloaders[i], args.local_epochs, criterion, device, config.LEARNING_RATE)
                 agent_models = gossip_average(agent_models, adj_matrix)
 
                 if (round_num + 1) % args.eval_every == 0:
@@ -273,7 +273,8 @@ def main():
                 agent_test_dataloaders=agent_test_dataloaders, adj_matrix=adj_matrix,
                 criterion=criterion, device=device, comm_rounds=args.comm_rounds,
                 local_epochs=args.local_epochs, eval_every=args.eval_every,
-                proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS
+                proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS,
+                learning_rate=config.LEARNING_RATE
             )
             # Final evaluation is handled inside the personalized loop for this mode
 
@@ -304,7 +305,8 @@ def main():
                 agent_test_dataloaders=agent_test_dataloaders, adj_matrix=adj_matrix,
                 criterion=criterion, device=device, comm_rounds=args.comm_rounds,
                 local_epochs=args.local_epochs, eval_every=args.eval_every,
-                proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS
+                proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS,
+                learning_rate=config.LEARNING_RATE
             )
 
         # # 3. Distribute data

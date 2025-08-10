@@ -7,3 +7,4 @@ lightly
 mpmath
 wandb
 scikit-learn
+plotly

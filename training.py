@@ -29,11 +29,11 @@ import torch
 #             ]
 
 
-def agent_update(agent_model, agent_dataloader, local_epochs, criterion, device):
+def agent_update(agent_model, agent_dataloader, local_epochs, criterion, device, learning_rate):
     """
     Performs the local training for a single agent in a federated setting.
     """
-    optimizer = torch.optim.SGD(agent_model.parameters(), lr=0.001, momentum=0.9, weight_decay=1e-4)
+    optimizer = torch.optim.SGD(agent_model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=1e-4)
     agent_model.train()
     agg_loss_dict = {}
 

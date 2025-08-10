@@ -22,7 +22,8 @@ def decentralized_personalized_training(
     local_epochs,
     eval_every,
     proj_input_dim,
-    eval_epochs
+    eval_epochs,
+    learning_rate
 ):
     """
     Decentralized training with per-agent domain adaptation and personalized evaluation.
@@ -48,7 +49,7 @@ def decentralized_personalized_training(
         for i in range(num_agents):
             if len(agent_train_dataloaders[i].dataset) > 0:
                 print(f"Training Agent {i}...")
-                agent_update(agent_models[i], agent_train_dataloaders[i], local_epochs, criterion, device)
+                agent_update(agent_models[i], agent_train_dataloaders[i], local_epochs, criterion, device, learning_rate)
 
         # Gossip averaging communication step
         print("Performing gossip averaging...")
