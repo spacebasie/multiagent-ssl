@@ -67,9 +67,9 @@ def parse_arguments():
 def main():
     """Main function to execute the pipeline."""
     args = parse_arguments()
-    if args.dataset == 'cifar10' and args.heterogeneity_type != 'office_random':
+    if args.dataset == 'cifar10':
         wandb.init(project="cifar10-runs", config=args)
-    elif args.dataset == 'cifar10' and args.heterogeneity_type == 'office_random':
+    elif args.dataset == 'office_home':
         wandb.init(project="office_home_runs", config=args)
 
     wandb.config.update({
