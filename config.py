@@ -17,7 +17,7 @@ INPUT_SIZE = 32
 NUM_AGENTS = 10
 COMMUNICATION_ROUNDS = 10
 LOCAL_EPOCHS = 2
-NON_IID_ALPHA = 0.5
+NON_IID_ALPHA = 100
 
 # --- Centralized Training Parameters (when NUM_AGENTS = 1) ---
 EPOCHS = 200 # A reasonable number for a single run

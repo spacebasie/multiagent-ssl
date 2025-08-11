@@ -88,9 +88,9 @@ def knn_evaluation(model, train_loader, test_loader, device, k=20, temperature=0
     return accuracy
 
 
-def plot_tsne(model, test_loader, device, plot_title="t-SNE Visualization"):
+def plot_tsne(model, test_loader, device, plot_title="t-SNE Visualization", save_html_path=None):
     """
-    Generates and logs a t-SNE plot of the model's representations to W&B.
+    Generates and logs a t-SNE plot to W&B and optionally saves an interactive HTML version.
     """
     print(f"\n--- Generating and logging '{plot_title}' to W&B ---")
     model.eval()
@@ -108,14 +108,12 @@ def plot_tsne(model, test_loader, device, plot_title="t-SNE Visualization"):
     all_features = torch.cat(all_features, dim=0).numpy()
     all_labels = torch.cat(all_labels, dim=0).numpy()
 
-    # Limit to a subset of data for faster t-SNE
     if len(all_features) > 2000:
         print("Dataset is large, using a random subset of 2000 points for t-SNE.")
         indices = np.random.choice(len(all_features), 2000, replace=False)
         all_features = all_features[indices]
         all_labels = all_labels[indices]
 
-    # 2. Apply t-SNE
     print("Running t-SNE...")
     tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(all_features) - 1), max_iter=1000)
     tsne_results = tsne.fit_transform(all_features)
@@ -125,9 +123,7 @@ def plot_tsne(model, test_loader, device, plot_title="t-SNE Visualization"):
     fig, ax = plt.subplots(figsize=(12, 10))
     scatter = ax.scatter(tsne_results[:, 0], tsne_results[:, 1], c=all_labels, cmap='viridis', alpha=0.7)
 
-    # --- START: Corrected Legend Logic ---
     class_names = None
-    # This robustly searches for the .classes attribute in nested dataset objects
     dataset = test_loader.dataset
     while hasattr(dataset, 'dataset'):
         if hasattr(dataset, 'classes') and dataset.classes:
@@ -138,22 +134,36 @@ def plot_tsne(model, test_loader, device, plot_title="t-SNE Visualization"):
         class_names = dataset.classes
 
     if class_names:
-        # If we found class names, create a proper legend
         legend_elements = scatter.legend_elements()
-        # Ensure we don't have more legend entries than classes
         num_legend_entries = len(legend_elements[0])
         ax.legend(legend_elements[0], class_names[:num_legend_entries], title="Classes")
     else:
-        # Fallback if no class names are found
         ax.legend(*scatter.legend_elements(), title="Classes")
-    # --- END: Corrected Legend Logic ---
 
     ax.set_title(plot_title)
     ax.set_xlabel('t-SNE Dimension 1')
     ax.set_ylabel('t-SNE Dimension 2')
     ax.grid(True)
 
-    # 4. Log the plot to Weights & Biases
+    # --- START: New additions ---
+    # 1. Fix the layout to prevent the legend from being cut off
+    fig.tight_layout()
+
+    # 2. Optionally save an interactive HTML version of the plot
+    if save_html_path:
+        try:
+            from wandb import util
+            import plotly.io as pio
+
+            print(f"Converting plot to interactive HTML...")
+            plotly_fig = util.matplotlib_to_plotly(fig)
+            pio.write_html(plotly_fig, file=save_html_path)
+            print(f"Interactive plot saved to {save_html_path}")
+        except ImportError:
+            print(
+                "Warning: Could not save interactive plot. Please ensure 'plotly' is installed (`pip install plotly`).")
+    # --- END: New additions ---
+
     wandb.log({plot_title: fig})
     print(f"'{plot_title}' logged to W&B.")
     plt.close(fig)

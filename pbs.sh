@@ -38,7 +38,7 @@ echo "Starting Python script..."
 python main.py \
     --mode 'federated' \
     --dataset 'office_home' \
-    --num_agents 8 \
+    --num_agents 4 \
     --comm_rounds 20 \
     --local_epochs 2 \
     --eval_every 2 \
