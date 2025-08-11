@@ -36,12 +36,12 @@ source ~/venv/venv25/bin/activate
 # These arguments will override the defaults in config.py.
 echo "Starting Python script..."
 python main.py \
-    --mode 'decentralized' \
+    --mode 'centralized' \
     --dataset 'office_home' \
     --topology 'random' \
     --heterogeneity_type 'office_random' \
     --num_agents 5 \
-    --comm_rounds 100 \
+    --comm_rounds 20 \
     --local_epochs 2 \
     --alpha 100 \
     --eval_every 5 \
