@@ -22,7 +22,7 @@ from evaluate import linear_evaluation, knn_evaluation, plot_tsne
 from network import set_network_topology, gossip_average
 from training import agent_update, aggregate_models, get_consensus_model, train_one_epoch_centralized
 from decentralized_training import decentralized_personalized_training
-from custom_datasets import get_officehome_train_test_loaders
+from custom_datasets import get_officehome_train_test_loaders, get_officehome_domain_split_loaders_personalized, get_officehome_domain_split_loaders_global
 from lightly.transforms.vicreg_transform import VICRegTransform
 import torchvision.transforms as T
 
@@ -49,7 +49,7 @@ def parse_arguments():
     parser.add_argument('--mode', type=str, default='centralized', choices=['centralized', 'federated', 'decentralized'])
     parser.add_argument('--dataset', type=str, default='cifar10', choices=['cifar10', 'cifar100', 'office_home'])
     parser.add_argument('--heterogeneity_type', type=str, default='label_skew',
-                        choices=['label_skew', 'domain_shift', 'office_random'],
+                        choices=['label_skew', 'domain_shift', 'office_random', 'office_domain_split'],
                         help='The type of data heterogeneity for decentralized mode.')
     parser.add_argument('--topology', type=str, default=config.NETWORK_TOPOLOGY, choices=['ring', 'fully_connected', 'random', 'disconnected'],
                         help='Network topology for decentralized mode.')
@@ -111,15 +111,28 @@ def main():
             T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
 
-        agent_train_dataloaders, agent_test_dataloaders, train_loader_eval, test_loader_eval = get_officehome_train_test_loaders(
-            root_dir="datasets/OfficeHomeDataset",
-            num_agents=args.num_agents,
-            batch_size=args.batch_size,
-            num_workers=config.NUM_WORKERS,
-            train_transform=vicreg_transform_officehome,
-            eval_transform=eval_transform_officehome,
-            num_classes=args.num_classes
-        )
+        if args.mode == 'federated':
+            print("Using OfficeHome domain split for federated learning.")
+            # Use the new function to get domain-expert dataloaders
+            agent_dataloaders, train_loader_eval, test_loader_eval = get_officehome_domain_split_loaders_global(
+                root_dir="datasets/OfficeHomeDataset",
+                num_agents=args.num_agents,
+                batch_size=args.batch_size,
+                num_workers=config.NUM_WORKERS,
+                train_transform=vicreg_transform_officehome,
+                eval_transform=eval_transform_officehome,
+                num_classes=args.num_classes
+            )
+        else:
+            agent_train_dataloaders, agent_test_dataloaders, train_loader_eval, test_loader_eval = get_officehome_train_test_loaders(
+                root_dir="datasets/OfficeHomeDataset",
+                num_agents=args.num_agents,
+                batch_size=args.batch_size,
+                num_workers=config.NUM_WORKERS,
+                train_transform=vicreg_transform_officehome,
+                eval_transform=eval_transform_officehome,
+                num_classes=args.num_classes
+            )
 
         if args.mode == 'centralized':
             # For centralized mode, the pretrain_dataloader uses the full training set with VICReg transforms
@@ -195,50 +208,51 @@ def main():
                 wandb.log({"eval/knn_accuracy": knn_acc}, step=epoch + 1)
         final_model_to_eval = global_model
 
-    elif args.mode == 'federated':
-        # Federated learning logic
-        wandb.run.name = f"federated_agents_{args.num_agents}_alpha_{args.alpha}"
-        agent_datasets = split_data(pretrain_dataloader.dataset, args.num_agents, args.alpha)
-        # 1. Filter out any agents that were assigned no data
-        active_agent_datasets = [ds for ds in agent_datasets if len(ds) > 0]
-        print(f"Data split resulted in {len(active_agent_datasets)} active agents out of {args.num_agents}.")
-        # 2. Create DataLoaders only for active agents
-        agent_dataloaders = [DataLoader(ds, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS)
-                             for ds in active_agent_datasets]
 
+    elif args.mode == 'federated':
+        wandb.run.name = f"federated_agents_{args.num_agents}_dataset_{args.dataset}"
+        # Conditionally prepare agent dataloaders based on the dataset
+        if args.dataset == 'office_home':
+            print("Using OfficeHome domain split for federated learning.")
+        else:
+            # Original, working logic for CIFAR datasets using label skew
+            print(f"Creating label skew (alpha={args.alpha}) splits for {args.dataset}.")
+            agent_datasets = split_data(pretrain_dataloader.dataset, args.num_agents, args.alpha)
+            active_agent_datasets = [ds for ds in agent_datasets if len(ds) > 0]
+            print(f"Data split resulted in {len(active_agent_datasets)} active agents out of {args.num_agents}.")
+            agent_dataloaders = [
+                DataLoader(ds, batch_size=args.batch_size, shuffle=True, num_workers=config.NUM_WORKERS)
+                for ds in active_agent_datasets]
+
+        # --- Federated Training Loop (Unchanged from your working version) ---
         for round_num in range(args.comm_rounds):
             print(f"\n--- Round {round_num + 1}/{args.comm_rounds} ---")
             agent_models = []
             round_agg_loss = {}
-
-            # 3. Iterate over the active dataloaders, not a fixed range
+            # Iterate over the active dataloaders, not a fixed range
             for agent_dataloader in agent_dataloaders:
                 agent_model = copy.deepcopy(global_model).to(device)
-                loss_dict = agent_update(agent_model, agent_dataloader, args.local_epochs, criterion, device, config.LEARNING_RATE)
-
+                loss_dict = agent_update(agent_model, agent_dataloader, args.local_epochs, criterion, device,
+                                         config.LEARNING_RATE)
                 if loss_dict:  # Check if the agent trained successfully
                     agent_models.append(agent_model)
                     for k, v in loss_dict.items():
                         round_agg_loss[k] = round_agg_loss.get(k, 0.0) + v
-
             if not agent_models:
                 print(f"Round {round_num + 1} | All active agents failed to train. Stopping.")
                 break
-
-            # 4. Average losses and models over the number of agents that actually trained
+            # Average losses and models over the number of agents that actually trained
             num_successful_agents = len(agent_models)
             for k in round_agg_loss:
                 round_agg_loss[k] /= num_successful_agents
             wandb.log({f"train/avg_{k}": v for k, v in round_agg_loss.items()}, step=round_num + 1)
-
             global_state_dict = aggregate_models(agent_models)
             global_model.load_state_dict(global_state_dict)
             if (round_num + 1) % args.eval_every == 0:
                 knn_acc = knn_evaluation(global_model, train_loader_eval, test_loader_eval, device, config.KNN_K,
                                          config.KNN_TEMPERATURE)
-                wandb.log({"eval/knn_accuracy": knn_acc}, step=round_num + 1)
+                wandb.log({"eval/global_knn_accuracy": knn_acc}, step=round_num + 1)
         final_model_to_eval = global_model
-
 
     elif args.mode == 'decentralized':
         wandb.run.name = f"decentralized_{args.topology}_agents_{args.num_agents}_hetero_{args.heterogeneity_type}"
@@ -298,8 +312,40 @@ def main():
             )
             final_model_to_eval = None
 
+        # Split data across agents randomly (IID classes / domains)
         elif args.heterogeneity_type == 'office_random':
             # This block now correctly uses the OfficeHome dataloaders that were prepared at the start.
+            decentralized_personalized_training(
+                agent_models=agent_models, agent_train_dataloaders=agent_train_dataloaders,
+                agent_test_dataloaders=agent_test_dataloaders, adj_matrix=adj_matrix,
+                criterion=criterion, device=device, comm_rounds=args.comm_rounds,
+                local_epochs=args.local_epochs, eval_every=args.eval_every,
+                proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS,
+                learning_rate=config.LEARNING_RATE
+            )
+            final_model_to_eval = None
+
+        # Split data across agents based on OfficeHome domains
+        elif args.heterogeneity_type == 'office_domain_split':
+            # This block loads data with each agent assigned a specific domain
+            vicreg_transform_officehome = VICRegTransform(input_size=224)
+            eval_transform_officehome = T.Compose([
+                T.Resize((224, 224)),
+                T.ToTensor(),
+                T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ])
+
+            # Call the new domain-splitting function
+            agent_train_dataloaders, agent_test_dataloaders = get_officehome_domain_split_loaders_personalized(
+                root_dir="datasets/OfficeHomeDataset",
+                num_agents=args.num_agents,
+                batch_size=args.batch_size,
+                num_workers=config.NUM_WORKERS,
+                train_transform=vicreg_transform_officehome,
+                eval_transform=eval_transform_officehome,
+                num_classes=args.num_classes
+            )
+
             decentralized_personalized_training(
                 agent_models=agent_models, agent_train_dataloaders=agent_train_dataloaders,
                 agent_test_dataloaders=agent_test_dataloaders, adj_matrix=adj_matrix,

@@ -138,3 +138,85 @@ def get_officehome_train_test_loaders(root_dir, num_agents=1, batch_size=64, num
                                   shuffle=False, num_workers=num_workers)
 
     return agent_train_dataloaders, agent_test_dataloaders, train_loader_eval, test_loader_eval
+
+
+# Add this function for the DECENTRALIZED mode (personalized evaluation)
+def get_officehome_domain_split_loaders_personalized(root_dir, num_agents, batch_size, num_workers, train_transform,
+                                                     eval_transform, num_classes=None):
+    """
+    Creates dataloaders where each agent is assigned a specific domain from OfficeHome.
+    Returns agent-specific training and testing dataloaders for personalized evaluation.
+    """
+    domains = ["Art", "Clipart", "Product", "RealWorld"]
+    agent_train_dataloaders = []
+    agent_test_dataloaders = []
+
+    for i in range(num_agents):
+        agent_domain = domains[i % len(domains)]
+        print(f"Assigning domain '{agent_domain}' to Agent {i}...")
+
+        agent_dataset = OfficeHomeDataset(
+            root_dir=root_dir,
+            num_classes=num_classes,
+            selected_domains=[agent_domain]
+        )
+
+        test_size = int(0.2 * len(agent_dataset))
+        train_size = len(agent_dataset) - test_size
+        agent_train_set, agent_test_set = random_split(agent_dataset, [train_size, test_size])
+
+        agent_train_dataloaders.append(
+            DataLoader(CustomDataset(agent_train_set, transform=train_transform), batch_size=batch_size, shuffle=True,
+                       num_workers=num_workers)
+        )
+        agent_test_dataloaders.append(
+            DataLoader(CustomDataset(agent_test_set, transform=eval_transform), batch_size=batch_size, shuffle=False,
+                       num_workers=num_workers)
+        )
+
+    return agent_train_dataloaders, agent_test_dataloaders
+
+
+# Add this function for the FEDERATED mode (global evaluation)
+def get_officehome_domain_split_loaders_global(root_dir, num_agents, batch_size, num_workers, train_transform,
+                                               eval_transform, num_classes=None):
+    """
+    Creates dataloaders where each agent is assigned a specific domain from OfficeHome.
+    Also returns global evaluation loaders containing data from all domains.
+    """
+    domains = ["Art", "Clipart", "Product", "RealWorld"]
+    agent_train_dataloaders = []
+    all_train_sets = []
+    all_test_sets = []
+
+    for i in range(num_agents):
+        agent_domain = domains[i % len(domains)]
+        print(f"Assigning domain '{agent_domain}' to Agent {i}...")
+
+        agent_dataset = OfficeHomeDataset(
+            root_dir=root_dir,
+            num_classes=num_classes,
+            selected_domains=[agent_domain]
+        )
+
+        test_size = int(0.2 * len(agent_dataset))
+        train_size = len(agent_dataset) - test_size
+        agent_train_set, agent_test_set = random_split(agent_dataset, [train_size, test_size])
+
+        all_train_sets.append(agent_train_set)
+        all_test_sets.append(agent_test_set)
+
+        agent_train_dataloaders.append(
+            DataLoader(CustomDataset(agent_train_set, transform=train_transform), batch_size=batch_size, shuffle=True,
+                       num_workers=num_workers)
+        )
+
+    global_train_dataset = torch.utils.data.ConcatDataset(all_train_sets)
+    global_test_dataset = torch.utils.data.ConcatDataset(all_test_sets)
+
+    train_loader_eval = DataLoader(CustomDataset(global_train_dataset, transform=eval_transform), batch_size=batch_size,
+                                   shuffle=False, num_workers=num_workers)
+    test_loader_eval = DataLoader(CustomDataset(global_test_dataset, transform=eval_transform), batch_size=batch_size,
+                                  shuffle=False, num_workers=num_workers)
+
+    return agent_train_dataloaders, train_loader_eval, test_loader_eval

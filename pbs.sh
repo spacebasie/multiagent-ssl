@@ -36,15 +36,12 @@ source ~/venv/venv25/bin/activate
 # These arguments will override the defaults in config.py.
 echo "Starting Python script..."
 python main.py \
-    --mode 'centralized' \
+    --mode 'federated' \
     --dataset 'office_home' \
-    --topology 'random' \
-    --heterogeneity_type 'office_random' \
-    --num_agents 5 \
+    --num_agents 8 \
     --comm_rounds 20 \
     --local_epochs 2 \
-    --alpha 100 \
-    --eval_every 5 \
+    --eval_every 2 \
     --num_classes 10 \
 
 echo "Job finished at $(date)"
