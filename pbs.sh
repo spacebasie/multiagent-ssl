@@ -38,10 +38,10 @@ echo "Starting Python script..."
 python main.py \
     --mode 'federated' \
     --dataset 'office_home' \
-    --num_agents 4 \
-    --comm_rounds 20 \
+    --num_agents 8 \
+    --comm_rounds 100 \
     --local_epochs 2 \
-    --eval_every 2 \
+    --eval_every 5 \
     --num_classes 10 \
 
 echo "Job finished at $(date)"

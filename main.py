@@ -365,7 +365,7 @@ def main():
         wandb.summary["final_linear_accuracy"] = final_linear_acc
         wandb.summary["final_knn_accuracy"] = final_knn_acc
         plot_tsne(final_model_to_eval, test_loader_eval, device,
-                  plot_title=f"Final {args.mode} Model t-SNE", save_html_path=f"{args.mode}_tsne_interactive.html")
+                  plot_title=f"Final {args.mode} Model t-SNE", save_html_path=None)
     wandb.finish()
 
 
