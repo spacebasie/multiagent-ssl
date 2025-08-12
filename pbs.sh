@@ -40,7 +40,7 @@ python main.py \
     --dataset 'office_home' \
     --num_agents 8 \
     --comm_rounds 100 \
-    --local_epochs 2 \
+    --local_epochs 1 \
     --eval_every 5 \
     --num_classes 10 \
 
