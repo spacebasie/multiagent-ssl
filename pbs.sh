@@ -38,9 +38,9 @@ echo "Starting Python script..."
 python main.py \
     --mode 'decentralized' \
     --dataset 'office_home' \
-    --heterogeneity_type 'office_domain_split' \
+    --heterogeneity_type 'office_random' \
     --topology 'disconnected' \
-    --num_agents 4 \
+    --num_agents 5 \
     --comm_rounds 100 \
     --local_epochs 2 \
     --eval_every 5 \
