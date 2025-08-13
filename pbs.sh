@@ -39,8 +39,8 @@ python main.py \
     --mode 'decentralized' \
     --dataset 'office_home' \
     --heterogeneity_type 'office_domain_split' \
-    --topology 'fully_connected' \
-    --num_agents 8 \
+    --topology 'random' \
+    --num_agents 4 \
     --comm_rounds 100 \
     --local_epochs 2 \
     --eval_every 5 \
