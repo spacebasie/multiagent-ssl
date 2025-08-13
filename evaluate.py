@@ -9,6 +9,7 @@ from torch import nn
 import torch.nn.functional as F
 import wandb
 from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -164,6 +165,65 @@ def plot_tsne(model, test_loader, device, plot_title="t-SNE Visualization", save
                 "Warning: Could not save interactive plot. Please ensure 'plotly' is installed (`pip install plotly`).")
     # --- END: New additions ---
 
+    wandb.log({plot_title: fig})
+    print(f"'{plot_title}' logged to W&B.")
+    plt.close(fig)
+
+def plot_pca(model, test_loader, device, plot_title="PCA Visualization"):
+    """
+    Generates and logs a PCA plot of the model's representations to W&B.
+    """
+    print(f"\n--- Generating and logging '{plot_title}' to W&B ---")
+    model.eval()
+    all_features = []
+    all_labels = []
+
+    # 1. Get all features and labels from the test set
+    with torch.no_grad():
+        for images, labels in test_loader:
+            images = images.to(device)
+            features = model.forward_backbone(images)
+            all_features.append(features.cpu())
+            all_labels.append(labels.cpu())
+
+    all_features = torch.cat(all_features, dim=0).numpy()
+    all_labels = torch.cat(all_labels, dim=0).numpy()
+
+    # 2. Apply PCA
+    print("Running PCA...")
+    pca = PCA(n_components=2, random_state=42)
+    pca_results = pca.fit_transform(all_features)
+    print("PCA finished.")
+
+    # 3. Create the plot
+    fig, ax = plt.subplots(figsize=(12, 10))
+    scatter = ax.scatter(pca_results[:, 0], pca_results[:, 1], c=all_labels, cmap='viridis', alpha=0.7)
+
+    # Logic to find and display class names in the legend
+    class_names = None
+    dataset = test_loader.dataset
+    while hasattr(dataset, 'dataset'):
+        if hasattr(dataset, 'classes') and dataset.classes:
+            class_names = dataset.classes
+            break
+        dataset = dataset.dataset
+    if hasattr(dataset, 'classes') and dataset.classes:
+        class_names = dataset.classes
+
+    if class_names:
+        legend_elements = scatter.legend_elements()
+        num_legend_entries = len(legend_elements[0])
+        ax.legend(legend_elements[0], class_names[:num_legend_entries], title="Classes")
+    else:
+        ax.legend(*scatter.legend_elements(), title="Classes")
+
+    ax.set_title(plot_title)
+    ax.set_xlabel('Principal Component 1')
+    ax.set_ylabel('Principal Component 2')
+    ax.grid(True)
+    fig.tight_layout()
+
+    # 4. Log the plot to Weights & Biases
     wandb.log({plot_title: fig})
     print(f"'{plot_title}' logged to W&B.")
     plt.close(fig)

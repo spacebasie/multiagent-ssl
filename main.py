@@ -18,7 +18,7 @@ import config
 from model import VICReg, VICRegLoss
 from data import get_dataloaders
 from data_splitter import split_data, get_domain_shift_dataloaders
-from evaluate import linear_evaluation, knn_evaluation, plot_tsne
+from evaluate import linear_evaluation, knn_evaluation, plot_tsne, plot_pca
 from network import set_network_topology, gossip_average
 from training import agent_update, aggregate_models, get_consensus_model, train_one_epoch_centralized
 from decentralized_training import decentralized_personalized_training
@@ -366,6 +366,8 @@ def main():
         wandb.summary["final_knn_accuracy"] = final_knn_acc
         plot_tsne(final_model_to_eval, test_loader_eval, device,
                   plot_title=f"Final {args.mode} Model t-SNE", save_html_path=None)
+        plot_pca(final_model_to_eval, test_loader_eval, device,
+                 plot_title=f"Final {args.mode} Model PCA")
     wandb.finish()
 
 
