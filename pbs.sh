@@ -39,7 +39,7 @@ python main.py \
     --mode 'decentralized' \
     --dataset 'office_home' \
     --heterogeneity_type 'office_domain_split' \
-    --topology 'random' \
+    --topology 'disconnected' \
     --num_agents 8 \
     --comm_rounds 100 \
     --local_epochs 2 \
