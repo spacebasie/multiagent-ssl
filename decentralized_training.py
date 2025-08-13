@@ -5,7 +5,7 @@ Contains the training and evaluation loop for decentralized personalized learnin
 specifically for the domain adaptation (Path 2) experiment.
 """
 
-from evaluate import linear_evaluation, knn_evaluation, plot_tsne
+from evaluate import linear_evaluation, knn_evaluation, plot_tsne, plot_pca
 from training import agent_update, get_consensus_model
 from network import gossip_average
 import wandb
@@ -128,6 +128,10 @@ def decentralized_personalized_training(
             device=device,
             plot_title=f"t-SNE for Agent {i}"
         )
+        plot_pca(model=agent_models[i],
+                 test_loader=agent_test_dataloaders[i],
+                 device=device,
+                 plot_title=f"PCA for Agent {i}")
 
     avg_final_acc = sum(final_results.values()) / len(final_results)
     avg_final_lin_acc = sum(lin_final_results.values()) / len(lin_final_results)
