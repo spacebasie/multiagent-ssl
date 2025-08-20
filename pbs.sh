@@ -36,14 +36,12 @@ source ~/venv/venv25/bin/activate
 # These arguments will override the defaults in config.py.
 echo "Starting Python script..."
 python main.py \
-    --mode 'decentralized' \
-    --dataset 'office_home' \
-    --heterogeneity_type 'office_random' \
-    --topology 'disconnected' \
-    --num_agents 5 \
-    --comm_rounds 100 \
-    --local_epochs 2 \
+    --mode 'centralized' \
+    --dataset 'cifar10' \
+    --num_agents 1 \
+    --local_epochs 1 \
     --eval_every 5 \
     --num_classes 10 \
+    --epochs 200
 
 echo "Job finished at $(date)"
