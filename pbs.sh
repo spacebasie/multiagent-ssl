@@ -40,7 +40,7 @@ python main.py \
     --dataset 'cifar10' \
     --heterogeneity_type 'label_skew' \
     --num_agents 5 \
-    --local_epochs 1 \
+    --local_epochs 2 \
     --eval_every 5 \
     --num_classes 10 \
     --comm_rounds 200 \
