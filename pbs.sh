@@ -44,6 +44,6 @@ python main.py \
     --eval_every 5 \
     --num_classes 10 \
     --comm_rounds 200 \
-    --alpha 0.5
+    --alpha 100
 
 echo "Job finished at $(date)"
