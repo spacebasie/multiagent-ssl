@@ -17,7 +17,7 @@ import wandb
 import config
 from model import VICReg, VICRegLoss
 from data import get_dataloaders
-from data_splitter import split_data, get_domain_shift_dataloaders
+from data_splitter import split_data, get_domain_shift_dataloaders, split_train_test_data_personalized
 from evaluate import linear_evaluation, knn_evaluation, plot_tsne, plot_pca
 from network import set_network_topology, gossip_average
 from training import agent_update, aggregate_models, get_consensus_model, train_one_epoch_centralized
@@ -49,7 +49,7 @@ def parse_arguments():
     parser.add_argument('--mode', type=str, default='centralized', choices=['centralized', 'federated', 'decentralized'])
     parser.add_argument('--dataset', type=str, default='cifar10', choices=['cifar10', 'cifar100', 'office_home'])
     parser.add_argument('--heterogeneity_type', type=str, default='label_skew',
-                        choices=['label_skew', 'domain_shift', 'office_random', 'office_domain_split'],
+                        choices=['label_skew', 'label_skew_personalized', 'domain_shift', 'office_random', 'office_domain_split'],
                         help='The type of data heterogeneity for decentralized mode.')
     parser.add_argument('--topology', type=str, default=config.NETWORK_TOPOLOGY, choices=['ring', 'fully_connected', 'random', 'disconnected'],
                         help='Network topology for decentralized mode.')
@@ -277,6 +277,37 @@ def main():
                                                  config.KNN_K, config.KNN_TEMPERATURE)
                         wandb.log({"eval/consensus_knn_accuracy": knn_acc}, step=round_num + 1)
             final_model_to_eval = get_consensus_model(agent_models, device)
+
+        elif args.heterogeneity_type == 'label_skew_personalized':
+            # Path for personalized evaluation of label-skewed specialists
+            agent_train_datasets, agent_test_datasets = split_train_test_data_personalized(
+                train_dataset=pretrain_dataloader.dataset,
+                test_dataset=test_loader_eval.dataset,
+                num_agents=args.num_agents,
+                non_iid_alpha=args.alpha
+            )
+
+            agent_train_dataloaders = [
+                DataLoader(ds, batch_size=args.batch_size, shuffle=True, num_workers=config.NUM_WORKERS)
+                for ds in agent_train_datasets if len(ds) > 0
+            ]
+            agent_test_dataloaders = [
+                DataLoader(ds, batch_size=args.batch_size, shuffle=False, num_workers=config.NUM_WORKERS)
+                for ds in agent_test_datasets if len(ds) > 0
+            ]
+
+            num_active_agents = len(agent_train_dataloaders)
+            agent_models = agent_models[:num_active_agents]
+
+            decentralized_personalized_training(
+                agent_models=agent_models, agent_train_dataloaders=agent_train_dataloaders,
+                agent_test_dataloaders=agent_test_dataloaders, adj_matrix=adj_matrix,
+                criterion=criterion, device=device, comm_rounds=args.comm_rounds,
+                local_epochs=args.local_epochs, eval_every=args.eval_every,
+                proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS,
+                learning_rate=config.LEARNING_RATE
+            )
+            final_model_to_eval = None
 
         elif args.heterogeneity_type == 'domain_shift':
             # This block correctly creates artificial domains for the CIFAR-10 dataset.

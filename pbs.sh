@@ -36,14 +36,14 @@ source ~/venv/venv25/bin/activate
 # These arguments will override the defaults in config.py.
 echo "Starting Python script..."
 python main.py \
-    --mode 'federated' \
+    --mode 'decentralized' \
     --dataset 'cifar10' \
-    --heterogeneity_type 'label_skew' \
+    --heterogeneity_type 'label_skew_personalized' \
     --num_agents 5 \
     --local_epochs 1 \
     --eval_every 5 \
     --num_classes 10 \
     --comm_rounds 200 \
-    --alpha 100
+    --alpha 0.5
 
 echo "Job finished at $(date)"

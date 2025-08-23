@@ -169,3 +169,58 @@ def get_domain_shift_dataloaders(
 
     print("Domain-shifted dataloaders created successfully.")
     return train_dataloaders, test_dataloaders
+
+
+# FILE: data_splitter.py
+
+def _partition_dataset_by_distribution(dataset, num_agents, class_distribution):
+    """
+    Helper function to partition a dataset based on a given Dirichlet distribution.
+    """
+    labels = _get_dataset_labels(dataset)
+    num_classes = len(np.unique(labels))
+    class_indices = [np.where(labels == i)[0] for i in range(num_classes)]
+
+    agent_indices = [[] for _ in range(num_agents)]
+
+    for c in range(num_classes):
+        proportions = class_distribution[:, c]
+        num_class_samples = len(class_indices[c])
+        num_samples_per_agent = (proportions * num_class_samples).astype(int)
+
+        remainder = num_class_samples - num_samples_per_agent.sum()
+        if remainder > 0:
+            for i in np.argsort(num_samples_per_agent)[::-1]:
+                if remainder == 0:
+                    break
+                num_samples_per_agent[i] += 1
+                remainder -= 1
+
+        np.random.shuffle(class_indices[c])
+
+        start_idx = 0
+        for i in range(num_agents):
+            end_idx = start_idx + num_samples_per_agent[i]
+            agent_indices[i].extend(class_indices[c][start_idx:end_idx])
+            start_idx = end_idx
+
+    return [Subset(dataset, indices) for indices in agent_indices]
+
+
+def split_train_test_data_personalized(train_dataset, test_dataset, num_agents, non_iid_alpha):
+    """
+    Splits both training and testing datasets into non-IID partitions for personalized evaluation.
+    It uses the same class distribution for both splits for each agent.
+    """
+    print(
+        f"Splitting train and test data into {num_agents} personalized non-IID partitions with alpha={non_iid_alpha}...")
+
+    labels = _get_dataset_labels(train_dataset)
+    num_classes = len(np.unique(labels))
+    class_distribution = np.random.dirichlet([non_iid_alpha] * num_classes, num_agents)
+
+    agent_train_datasets = _partition_dataset_by_distribution(train_dataset, num_agents, class_distribution)
+    agent_test_datasets = _partition_dataset_by_distribution(test_dataset, num_agents, class_distribution)
+
+    print("Personalized train and test data splitting complete.")
+    return agent_train_datasets, agent_test_datasets
