@@ -40,7 +40,7 @@ python main.py \
     --dataset 'cifar10' \
     --heterogeneity_type 'label_skew_personalized' \
     --topology 'fully_connected' \
-    --num_agents 5 \
+    --num_agents 15 \
     --local_epochs 1 \
     --eval_every 5 \
     --num_classes 10 \
