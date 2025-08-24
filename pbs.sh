@@ -39,11 +39,12 @@ python main.py \
     --mode 'decentralized' \
     --dataset 'cifar10' \
     --heterogeneity_type 'label_skew_personalized' \
+    --topology 'disconnected' \
     --num_agents 5 \
     --local_epochs 1 \
     --eval_every 5 \
     --num_classes 10 \
     --comm_rounds 200 \
-    --alpha 100
+    --alpha 0.5
 
 echo "Job finished at $(date)"
