@@ -41,7 +41,7 @@ python main.py \
     --heterogeneity_type 'office_hierarchical' \
     --topology 'fully_connected' \
     --num_neighborhoods 2 \
-    --agents_per_neighborhood 4 \
+    --agents_per_neighborhood 8 \
     --eval_every 5 \
     --num_classes 10 \
     --comm_rounds 200 \

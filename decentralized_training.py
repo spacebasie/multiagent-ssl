@@ -10,6 +10,8 @@ from training import agent_update, get_consensus_model
 from network import gossip_average
 import wandb
 from config import KNN_TEMPERATURE, KNN_K
+from torch.utils.data import ConcatDataset, DataLoader
+
 
 def decentralized_personalized_training(
     agent_models,
@@ -139,3 +141,70 @@ def decentralized_personalized_training(
     wandb.summary["average_final_linear_accuracy"] = avg_final_lin_acc
     print(f"\nAverage Final Personalized Accuracy: {avg_final_acc:.2f}%")
     print(f"Average Final Linear Evaluation Accuracy: {avg_final_lin_acc:.2f}%")
+
+
+def evaluate_neighborhood_consensus(
+        all_agent_models,
+        all_agent_test_dataloaders,
+        num_neighborhoods,
+        agents_per_neighborhood,
+        device,
+        proj_input_dim,
+        eval_epochs,
+        batch_size  # Add batch_size as an argument
+):
+    """
+    Performs a neighborhood-level consensus evaluation for the hierarchical experiment.
+    """
+    print("\n--- Starting Neighborhood-Level Consensus Evaluation ---")
+
+    for n_idx in range(num_neighborhoods):
+        print(f"\n--- Evaluating Neighborhood {n_idx} ---")
+
+        # 1. Isolate the models and test loaders for the current neighborhood
+        start_idx = n_idx * agents_per_neighborhood
+        end_idx = start_idx + agents_per_neighborhood
+
+        neighborhood_models = all_agent_models[start_idx:end_idx]
+        neighborhood_test_loaders = all_agent_test_dataloaders[start_idx:end_idx]
+
+        if not neighborhood_models:
+            print(f"No active models in Neighborhood {n_idx}, skipping evaluation.")
+            continue
+
+        # 2. Create the consensus model for this neighborhood using the existing function
+        print(f"Creating consensus model for Neighborhood {n_idx}...")
+        neighborhood_consensus_model = get_consensus_model(neighborhood_models, device)
+
+        # 3. Combine the test datasets from all agents in the neighborhood
+        neighborhood_test_datasets = [loader.dataset for loader in neighborhood_test_loaders]
+        combined_test_dataset = ConcatDataset(neighborhood_test_datasets)
+
+        # We need a representative train loader for kNN and linear eval.
+        # We can create one from the combined test dataset.
+        combined_train_loader_for_eval = DataLoader(combined_test_dataset, batch_size=batch_size, shuffle=True)
+        combined_test_loader = DataLoader(combined_test_dataset, batch_size=batch_size, shuffle=False)
+
+        print(
+            f"Evaluating Neighborhood {n_idx} consensus model on combined test set ({len(combined_test_dataset)} samples)...")
+
+        # 4. Run the standard evaluation functions
+        knn_acc = knn_evaluation(
+            model=neighborhood_consensus_model,
+            train_loader=combined_train_loader_for_eval,
+            test_loader=combined_test_loader,
+            device=device,
+            k=KNN_K,
+            temperature=KNN_TEMPERATURE
+        )
+        wandb.summary[f"neighborhood_{n_idx}_final_knn_accuracy"] = knn_acc
+
+        lin_acc = linear_evaluation(
+            model=neighborhood_consensus_model,
+            proj_output_dim=proj_input_dim,
+            train_loader=combined_train_loader_for_eval,
+            test_loader=combined_test_loader,
+            epochs=eval_epochs,
+            device=device
+        )
+        wandb.summary[f"neighborhood_{n_idx}_final_linear_accuracy"] = lin_acc

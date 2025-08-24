@@ -21,7 +21,7 @@ from data_splitter import split_data, get_domain_shift_dataloaders, split_train_
 from evaluate import linear_evaluation, knn_evaluation, plot_tsne, plot_pca
 from network import set_network_topology, gossip_average, set_hierarchical_topology
 from training import agent_update, aggregate_models, get_consensus_model, train_one_epoch_centralized
-from decentralized_training import decentralized_personalized_training
+from decentralized_training import decentralized_personalized_training, evaluate_neighborhood_consensus
 from custom_datasets import (get_officehome_train_test_loaders, get_officehome_domain_split_loaders_personalized,
                              get_officehome_domain_split_loaders_global, get_officehome_hierarchical_loaders)
 from lightly.transforms.vicreg_transform import VICRegTransform
@@ -434,6 +434,19 @@ def main():
                 proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS,
                 learning_rate=config.LEARNING_RATE
             )
+            if agent_models:
+                evaluate_neighborhood_consensus(
+                    all_agent_models=agent_models,
+                    all_agent_test_dataloaders=agent_test_dataloaders,
+                    num_neighborhoods=args.num_neighborhoods,
+                    agents_per_neighborhood=args.agents_per_neighborhood,
+                    device=device,
+                    proj_input_dim=config.PROJECTION_INPUT_DIM,
+                    eval_epochs=config.EVAL_EPOCHS,
+                    batch_size=args.batch_size  # Pass the batch size
+                )
+
+
             final_model_to_eval = None
 
     if final_model_to_eval:
