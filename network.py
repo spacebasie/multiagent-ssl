@@ -103,3 +103,43 @@ def gossip_average(agent_models: list, adj_matrix: np.ndarray):
         agent_models[i].load_state_dict(new_state_dict)
 
     return agent_models
+
+
+def set_hierarchical_topology(num_neighborhoods: int, agents_per_neighborhood: int, intra_weight=1.0, inter_weight=0.1) -> np.ndarray:
+    """
+    Creates a clustered adjacency matrix for a hierarchical network topology.
+
+    Args:
+        num_neighborhoods (int): The number of distinct agent clusters.
+        agents_per_neighborhood (int): The number of agents within each neighborhood.
+        intra_weight (float): The weight for connections within a neighborhood.
+        inter_weight (float): The weight for connections between neighborhoods.
+
+    Returns:
+        np.ndarray: The weighted adjacency matrix.
+    """
+    num_agents = num_neighborhoods * agents_per_neighborhood
+    print(f"Setting up a hierarchical topology with {num_neighborhoods} neighborhoods and {num_agents} total agents...")
+    adj_matrix = np.zeros((num_agents, num_agents), dtype=float)
+
+    # Create dense, high-weight connections within each neighborhood
+    for n in range(num_neighborhoods):
+        start_idx = n * agents_per_neighborhood
+        end_idx = (n + 1) * agents_per_neighborhood
+        # Fully connect agents within the neighborhood
+        adj_matrix[start_idx:end_idx, start_idx:end_idx] = intra_weight
+
+    # Create sparse, low-weight connections between neighborhoods
+    # Here, we connect the first agent of each neighborhood to the first of every other.
+    for n1 in range(num_neighborhoods):
+        for n2 in range(n1 + 1, num_neighborhoods):
+            agent1_idx = n1 * agents_per_neighborhood
+            agent2_idx = n2 * agents_per_neighborhood
+            adj_matrix[agent1_idx, agent2_idx] = inter_weight
+            adj_matrix[agent2_idx, agent1_idx] = inter_weight # Ensure symmetry
+
+    # Ensure all agents have a self-loop
+    np.fill_diagonal(adj_matrix, intra_weight)
+
+    print("Hierarchical network topology successfully created.")
+    return adj_matrix

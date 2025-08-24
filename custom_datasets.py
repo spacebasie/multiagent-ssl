@@ -5,6 +5,7 @@ from PIL import Image
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader, Subset, random_split
 import torch
+import numpy as np
 
 class CustomDataset(Dataset):
     """
@@ -220,3 +221,77 @@ def get_officehome_domain_split_loaders_global(root_dir, num_agents, batch_size,
                                   shuffle=False, num_workers=num_workers)
 
     return agent_train_dataloaders, train_loader_eval, test_loader_eval
+
+
+def get_officehome_hierarchical_loaders(
+        root_dir, num_neighborhoods, agents_per_neighborhood, batch_size,
+        num_workers, train_transform, eval_transform, test_split=0.2
+):
+    """
+    Creates dataloaders for a hierarchical heterogeneity experiment.
+    - Inter-Neighborhood: Label Skew (specialized on classes)
+    - Intra-Neighborhood: Domain Shift (specialized on domains)
+    """
+    print("Creating hierarchical dataloaders for Office-Home...")
+    domains = OfficeHomeDataset.DOMAINS
+    if agents_per_neighborhood > len(domains):
+        raise ValueError(
+            f"agents_per_neighborhood ({agents_per_neighborhood}) cannot exceed the number of available domains ({len(domains)}).")
+
+    # 1. Get all classes and partition them among neighborhoods
+    full_dataset = OfficeHomeDataset(root_dir=root_dir)
+    all_classes = full_dataset.classes
+    np.random.shuffle(all_classes)
+    class_partitions = np.array_split(all_classes, num_neighborhoods)
+
+    agent_train_dataloaders = []
+    agent_test_dataloaders = []
+    agent_id_counter = 0
+
+    # 2. Iterate through each neighborhood to assign classes and domains
+    for n_idx in range(num_neighborhoods):
+        neighborhood_classes = class_partitions[n_idx]
+        print(
+            f"\nNeighborhood {n_idx}: Specializing in {len(neighborhood_classes)} classes -> {neighborhood_classes.tolist()}")
+
+        # 3. Within a neighborhood, assign each agent a unique domain
+        for a_idx in range(agents_per_neighborhood):
+            agent_domain = domains[a_idx % len(domains)]
+            print(f"  - Agent {agent_id_counter}: Assigned domain '{agent_domain}'")
+
+            # Create a dataset for this specific agent (specific classes, specific domain)
+            agent_dataset = OfficeHomeDataset(
+                root_dir=root_dir,
+                selected_domains=[agent_domain],
+                num_classes=None  # We will filter by class name manually
+            )
+
+            # Manually filter the samples to only include the neighborhood's specialist classes
+            class_indices_map = {cls: i for i, cls in enumerate(agent_dataset.classes)}
+            target_class_indices = {class_indices_map[cls] for cls in neighborhood_classes if cls in class_indices_map}
+
+            agent_samples = [s for s in agent_dataset.samples if s[1] in target_class_indices]
+            agent_dataset.samples = agent_samples
+
+            # Split into train and test sets for this specific agent
+            test_size = int(test_split * len(agent_dataset))
+            train_size = len(agent_dataset) - test_size
+
+            if train_size > 0 and test_size > 0:
+                agent_train_set, agent_test_set = random_split(agent_dataset, [train_size, test_size])
+
+                agent_train_dataloaders.append(
+                    DataLoader(CustomDataset(agent_train_set, transform=train_transform), batch_size=batch_size,
+                               shuffle=True, num_workers=num_workers)
+                )
+                agent_test_dataloaders.append(
+                    DataLoader(CustomDataset(agent_test_set, transform=eval_transform), batch_size=batch_size,
+                               shuffle=False, num_workers=num_workers)
+                )
+            else:
+                print(f"  - WARNING: Agent {agent_id_counter} has insufficient data and will be skipped.")
+
+            agent_id_counter += 1
+
+    print("\nHierarchical dataloaders created successfully.")
+    return agent_train_dataloaders, agent_test_dataloaders

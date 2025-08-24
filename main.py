@@ -19,10 +19,11 @@ from model import VICReg, VICRegLoss
 from data import get_dataloaders
 from data_splitter import split_data, get_domain_shift_dataloaders, split_train_test_data_personalized
 from evaluate import linear_evaluation, knn_evaluation, plot_tsne, plot_pca
-from network import set_network_topology, gossip_average
+from network import set_network_topology, gossip_average, set_hierarchical_topology
 from training import agent_update, aggregate_models, get_consensus_model, train_one_epoch_centralized
 from decentralized_training import decentralized_personalized_training
-from custom_datasets import get_officehome_train_test_loaders, get_officehome_domain_split_loaders_personalized, get_officehome_domain_split_loaders_global
+from custom_datasets import (get_officehome_train_test_loaders, get_officehome_domain_split_loaders_personalized,
+                             get_officehome_domain_split_loaders_global, get_officehome_hierarchical_loaders)
 from lightly.transforms.vicreg_transform import VICRegTransform
 import torchvision.transforms as T
 
@@ -61,6 +62,10 @@ def parse_arguments():
     parser.add_argument('--eval_every', type=int, default=config.EVAL_EVERY)
     parser.add_argument('--num_classes', type=int, default=0,
                         help='Number of classes to use from the dataset (0 for all).')
+    parser.add_argument('--num_neighborhoods', type=int, default=2,
+                        help='Number of neighborhoods for hierarchical setup.')
+    parser.add_argument('--agents_per_neighborhood', type=int, default=4,
+                        help='Number of agents per neighborhood for hierarchical setup.')
     return parser.parse_args()
 
 
@@ -377,6 +382,50 @@ def main():
                 num_classes=args.num_classes
             )
 
+            decentralized_personalized_training(
+                agent_models=agent_models, agent_train_dataloaders=agent_train_dataloaders,
+                agent_test_dataloaders=agent_test_dataloaders, adj_matrix=adj_matrix,
+                criterion=criterion, device=device, comm_rounds=args.comm_rounds,
+                local_epochs=args.local_epochs, eval_every=args.eval_every,
+                proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS,
+                learning_rate=config.LEARNING_RATE
+            )
+            final_model_to_eval = None
+
+        elif args.heterogeneity_type == 'office_hierarchical':
+            # This block handles the new hierarchical experiment
+            vicreg_transform_officehome = VICRegTransform(input_size=224)
+            eval_transform_officehome = T.Compose([
+                T.Resize((224, 224)),
+                T.ToTensor(),
+                T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ])
+
+            args.num_agents = args.num_neighborhoods * args.agents_per_neighborhood
+            wandb.config.update({"num_agents": args.num_agents})
+
+            # 1. Set the clustered network topology
+            adj_matrix = set_hierarchical_topology(
+                num_neighborhoods=args.num_neighborhoods,
+                agents_per_neighborhood=args.agents_per_neighborhood
+            )
+
+            # 2. Get the hierarchical dataloaders
+            agent_train_dataloaders, agent_test_dataloaders = get_officehome_hierarchical_loaders(
+                root_dir="datasets/OfficeHomeDataset",
+                num_neighborhoods=args.num_neighborhoods,
+                agents_per_neighborhood=args.agents_per_neighborhood,
+                batch_size=args.batch_size,
+                num_workers=config.NUM_WORKERS,
+                train_transform=vicreg_transform_officehome,
+                eval_transform=eval_transform_officehome
+            )
+
+            # 3. Initialize models for the actual number of active agents
+            num_active_agents = len(agent_train_dataloaders)
+            agent_models = [copy.deepcopy(global_model).to(device) for _ in range(num_active_agents)]
+
+            # 4. Run the personalized training and evaluation loop
             decentralized_personalized_training(
                 agent_models=agent_models, agent_train_dataloaders=agent_train_dataloaders,
                 agent_test_dataloaders=agent_test_dataloaders, adj_matrix=adj_matrix,

@@ -37,14 +37,13 @@ source ~/venv/venv25/bin/activate
 echo "Starting Python script..."
 python main.py \
     --mode 'decentralized' \
-    --dataset 'cifar10' \
-    --heterogeneity_type 'label_skew_personalized' \
+    --dataset 'office_home' \
+    --heterogeneity_type 'office_hierarchical' \
     --topology 'fully_connected' \
-    --num_agents 15 \
-    --local_epochs 1 \
+    --num_neighborhoods 2 \
+    --agents_per_neighborhood 4 \
     --eval_every 5 \
     --num_classes 10 \
     --comm_rounds 200 \
-    --alpha 0.5
 
 echo "Job finished at $(date)"
