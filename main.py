@@ -72,6 +72,8 @@ def parse_arguments():
 def main():
     """Main function to execute the pipeline."""
     args = parse_arguments()
+    if args.heterogeneity_type == 'office_hierarchical':
+        args.num_agents = args.num_neighborhoods * args.agents_per_neighborhood
     if args.dataset == 'cifar10':
         wandb.init(project="cifar10-runs", config=args)
     elif args.dataset == 'office_home':
@@ -401,8 +403,7 @@ def main():
                 T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ])
 
-            args.num_agents = args.num_neighborhoods * args.agents_per_neighborhood
-            wandb.config.update({"num_agents": args.num_agents})
+            wandb.config.update({"topology": args.topology})
 
             # 1. Set the clustered network topology
             adj_matrix = set_hierarchical_topology(
