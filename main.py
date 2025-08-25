@@ -50,7 +50,7 @@ def parse_arguments():
     parser.add_argument('--mode', type=str, default='centralized', choices=['centralized', 'federated', 'decentralized'])
     parser.add_argument('--dataset', type=str, default='cifar10', choices=['cifar10', 'cifar100', 'office_home'])
     parser.add_argument('--heterogeneity_type', type=str, default='label_skew',
-                        choices=['label_skew', 'label_skew_personalized', 'domain_shift', 'office_random', 'office_domain_split'],
+                        choices=['label_skew', 'label_skew_personalized', 'domain_shift', 'office_random', 'office_domain_split', 'office_hierarchical'],
                         help='The type of data heterogeneity for decentralized mode.')
     parser.add_argument('--topology', type=str, default=config.NETWORK_TOPOLOGY, choices=['ring', 'fully_connected', 'random', 'disconnected'],
                         help='Network topology for decentralized mode.')
