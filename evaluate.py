@@ -109,6 +109,11 @@ def plot_tsne(model, test_loader, device, plot_title="t-SNE Visualization", save
     all_features = torch.cat(all_features, dim=0).numpy()
     all_labels = torch.cat(all_labels, dim=0).numpy()
 
+    if not np.isfinite(all_features).all():
+        print(f"Warning: Skipping '{plot_title}' because the model produced NaN/Inf features.")
+        # We return here to avoid crashing, allowing the rest of the script to run.
+        return
+
     if len(all_features) > 2000:
         print("Dataset is large, using a random subset of 2000 points for t-SNE.")
         indices = np.random.choice(len(all_features), 2000, replace=False)

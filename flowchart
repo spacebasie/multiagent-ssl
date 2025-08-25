@@ -1,0 +1,77 @@
+graph TD
+    subgraph "Setup"
+        A[Start: main.py] --> B{Parse Arguments};
+        B --> C{Select Dataset};
+        C --> D[Setup: Model, Device, Criterion];
+        D --> E{Select Mode};
+    end
+
+
+
+    subgraph "Centralized Mode"
+        E --> F[Centralized];
+        F -- if dataset is CIFAR --> F1[Load Full CIFAR Dataset];
+        F -- if dataset is OfficeHome --> F2[Load Full OfficeHome Dataset];
+        F1 --> F3[Train Global Model];
+        F2 --> F3;
+        F3 --> F4{Evaluate Every N Epochs};
+        F4 --> F3;
+        F4 --> F5[Final Evaluation & Visualization];
+    end
+
+    subgraph "Federated Mode"
+        E --> G[Federated];
+        G -- if dataset is CIFAR --> G1[Split Data by Label Skew];
+        G -- if dataset is OfficeHome --> G2[Split Data by Domain - Global Eval];
+        G1 --> G3[For each Comm. Round...];
+        G2 --> G3;
+        G3 --> G4[Agents Train Locally];
+        G4 --> G5[Aggregate All Models on Server];
+        G5 --> G6{Evaluate Global Model Every N Rounds};
+        G6 --> G3;
+        G6 --> G7[Final Evaluation & Visualization of Global Model];
+
+    end
+
+    subgraph "Decentralized Mode"
+        E --> H[Decentralized];
+        H --> H1{Select Heterogeneity Type};
+        H1 --> I[Label Skew - CIFAR];
+        H1 --> J[Domain Shift - CIFAR];
+        H1 --> K[Office Random - OfficeHome];
+        H1 --> L[Office Domain Split - OfficeHome];
+
+        I --> I1[Split Data by Label Skew];
+        I1 --> I2[For each Comm. Round...];
+        I2 --> I3[Agents Train Locally];
+        I3 --> I4[Gossip Average with Neighbors];
+        I4 --> I5{Evaluate Consensus Model};
+        I5 --> I2;
+        I5 --> I6[Final Evaluation of Consensus Model];
+
+
+        J --> J1[Split Data Evenly & Assign Unique Transforms];
+        J1 --> J2[For each Comm. Round...];
+        J2 --> J3[Agents Train Locally];
+        J3 --> J4[Gossip Average with Neighbors];
+        J4 --> J5{Personalized Evaluation};
+        J5 --> J2;
+        J5 --> J6[Final Personalized Evaluation];
+
+
+        K --> K1[Split All Domains Randomly];
+        K1 -->J2;
+
+        L --> L1[Split Data by Domain - Personalized Eval];
+        L1 --> J2;
+
+    end
+
+    F5 --> Z[End];
+    G7 --> Z;
+    I6 --> Z;
+    J6 --> Z;
+
+    style F fill:#f9f,stroke:#333,stroke-width:2px
+    style G fill:#ccf,stroke:#333,stroke-width:2px
+    style H fill:#cfc,stroke:#333,stroke-width:2px

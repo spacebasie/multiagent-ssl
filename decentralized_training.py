@@ -50,6 +50,10 @@ def decentralized_personalized_training(
         round_agg_loss = {}
         # Local training for each agent
         for i in range(num_agents):
+            # Safety check: Ensure the agent's dataloader is not empty
+            if len(agent_train_dataloaders[i]) == 0:
+                print(f"Skipping Agent {i}: No data available for training.")
+                continue
             if len(agent_train_dataloaders[i].dataset) > 0:
                 print(f"Training Agent {i}...")
                 loss_dict = agent_update(agent_models[i], agent_train_dataloaders[i], local_epochs, criterion, device, learning_rate)
