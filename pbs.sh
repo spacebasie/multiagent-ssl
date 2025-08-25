@@ -38,7 +38,7 @@ echo "Starting Python script..."
 python main.py \
     --mode 'decentralized' \
     --dataset 'cifar10' \
-    --topology 'disconnected' \
+    --topology 'fully_connected' \
     --heterogeneity_type 'label_skew_personalized' \
     --num_agents 15 \
     --eval_every 5 \
