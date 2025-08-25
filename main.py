@@ -293,7 +293,7 @@ def main():
             )
 
             agent_train_dataloaders = [
-                DataLoader(ds, batch_size=args.batch_size, shuffle=True, num_workers=config.NUM_WORKERS)
+                DataLoader(ds, batch_size=args.batch_size, shuffle=True, num_workers=config.NUM_WORKERS, drop_last=True)
                 for ds in agent_train_datasets if len(ds) > 0
             ]
             agent_test_dataloaders = [
