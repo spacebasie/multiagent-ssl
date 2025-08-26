@@ -419,7 +419,8 @@ def main():
                 batch_size=args.batch_size,
                 num_workers=config.NUM_WORKERS,
                 train_transform=vicreg_transform_officehome,
-                eval_transform=eval_transform_officehome
+                eval_transform=eval_transform_officehome,
+                num_classes=args.num_classes
             )
 
             # 3. Initialize models for the actual number of active agents

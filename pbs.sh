@@ -41,8 +41,8 @@ python main.py \
     --heterogeneity_type 'office_hierarchical' \
     --num_neighborhoods 2 \
     --agents_per_neighborhood 4 \
-    --eval_every 5 \
+    --eval_every 2 \
     --num_classes 10 \
-    --comm_rounds 200 \
+    --comm_rounds 10 \
 
 echo "Job finished at $(date)"
