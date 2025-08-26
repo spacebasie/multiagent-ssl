@@ -25,7 +25,9 @@ def decentralized_personalized_training(
     eval_every,
     proj_input_dim,
     eval_epochs,
-    learning_rate
+    learning_rate,
+    global_train_loader_eval,
+    global_test_loader_eval
 ):
     """
     Decentralized training with per-agent domain adaptation and personalized evaluation.
@@ -119,8 +121,8 @@ def decentralized_personalized_training(
         lin_acc = linear_evaluation(
             model=agent_models[i],
             proj_output_dim=proj_input_dim,
-            train_loader=agent_train_dataloaders[i],
-            test_loader=agent_test_dataloaders[i],
+            train_loader=global_train_loader_eval,
+            test_loader=global_test_loader_eval,
             epochs=eval_epochs,
             device=device
         )

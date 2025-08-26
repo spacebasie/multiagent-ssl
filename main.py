@@ -312,7 +312,9 @@ def main():
                 criterion=criterion, device=device, comm_rounds=args.comm_rounds,
                 local_epochs=args.local_epochs, eval_every=args.eval_every,
                 proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS,
-                learning_rate=config.LEARNING_RATE
+                learning_rate=config.LEARNING_RATE,
+                global_train_loader_eval=train_loader_eval,
+                global_test_loader_eval=test_loader_eval
             )
             final_model_to_eval = None
 
@@ -346,7 +348,9 @@ def main():
                 criterion=criterion, device=device, comm_rounds=args.comm_rounds,
                 local_epochs=args.local_epochs, eval_every=args.eval_every,
                 proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS,
-                learning_rate=config.LEARNING_RATE
+                learning_rate=config.LEARNING_RATE,
+                global_train_loader_eval=train_loader_eval,
+                global_test_loader_eval=test_loader_eval
             )
             final_model_to_eval = None
 
@@ -359,7 +363,9 @@ def main():
                 criterion=criterion, device=device, comm_rounds=args.comm_rounds,
                 local_epochs=args.local_epochs, eval_every=args.eval_every,
                 proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS,
-                learning_rate=config.LEARNING_RATE
+                learning_rate=config.LEARNING_RATE,
+                global_train_loader_eval=train_loader_eval,
+                global_test_loader_eval=test_loader_eval
             )
             final_model_to_eval = None
 
@@ -390,7 +396,9 @@ def main():
                 criterion=criterion, device=device, comm_rounds=args.comm_rounds,
                 local_epochs=args.local_epochs, eval_every=args.eval_every,
                 proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS,
-                learning_rate=config.LEARNING_RATE
+                learning_rate=config.LEARNING_RATE,
+                global_train_loader_eval=train_loader_eval,
+                global_test_loader_eval=test_loader_eval
             )
             final_model_to_eval = None
 
@@ -434,7 +442,9 @@ def main():
                 criterion=criterion, device=device, comm_rounds=args.comm_rounds,
                 local_epochs=args.local_epochs, eval_every=args.eval_every,
                 proj_input_dim=config.PROJECTION_INPUT_DIM, eval_epochs=config.EVAL_EPOCHS,
-                learning_rate=config.LEARNING_RATE
+                learning_rate=config.LEARNING_RATE,
+                global_train_loader_eval=train_loader_eval,
+                global_test_loader_eval=test_loader_eval
             )
             if agent_models:
                 evaluate_neighborhood_consensus(
