@@ -35,17 +35,30 @@ source ~/venv/venv25/bin/activate
 
 # These arguments will override the defaults in config.py.
 echo "Starting Python script..."
+# For office_hierarchical
+# python main.py \
+#    --mode 'decentralized' \
+#    --dataset 'office_home' \
+#    --heterogeneity_type 'office_hierarchical' \
+#    --topology 'random' \
+#    --num_neighborhoods 2 \
+#    --alpha 100 \
+#    --agents_per_neighborhood 4 \
+#    --eval_every 2 \
+#    --num_classes 10 \
+#    --comm_rounds 10 \
+#    --local_epochs 2
+
+#For cifar10
 python main.py \
     --mode 'decentralized' \
-    --dataset 'office_home' \
-    --heterogeneity_type 'office_hierarchical' \
-    --topology 'random' \
-    --num_neighborhoods 2 \
-    --alpha 100 \
-    --agents_per_neighborhood 4 \
-    --eval_every 2 \
+    --dataset 'cifar10' \
+    --heterogeneity_type 'label_skew_personalized' \
+    --topology 'fully_connected' \
+    --alpha 0.5 \
+    --eval_every 5 \
     --num_classes 10 \
-    --comm_rounds 10 \
-    --local_epochs 2
+    --comm_rounds 200 \
+    --local_epochs 1
 
 echo "Job finished at $(date)"
