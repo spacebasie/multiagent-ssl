@@ -1,7 +1,6 @@
 # combo_training.py
-
 """
-Contains the training and evaluation loop for the alignment-regularized
+Contains the training and evaluation loop for the novel alignment-regularized
 collaborative classification protocol.
 """
 
@@ -10,10 +9,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import copy
 import wandb
-import numpy as np
-from training import agent_update  # We can reuse the unsupervised part
 from network import gossip_average
-from evaluate import knn_evaluation
+from evaluate import linear_evaluation  # We can reuse this for the final eval
+from config import KNN_K, KNN_TEMPERATURE
 
 
 def gossip_average_tensors(tensor_list: list, adj_matrix: dict):
@@ -22,11 +20,15 @@ def gossip_average_tensors(tensor_list: list, adj_matrix: dict):
     This is a production-ready way to average the public embeddings.
     """
     num_agents = len(tensor_list)
-    old_tensors = [t.clone() for t in tensor_list]
+    if num_agents == 0:
+        return []
+
+    old_tensors = [t.clone().detach() for t in tensor_list]
     new_tensors = []
 
     for i in range(num_agents):
         neighbor_indices = [j for j, connected in enumerate(adj_matrix[i]) if connected]
+
         # Start with its own tensor
         summed_tensor = old_tensors[i].clone()
 
@@ -48,6 +50,9 @@ def gossip_average_classifier(agent_classifiers: list, adj_matrix: dict):
     This function reuses the logic of averaging state_dicts.
     """
     num_agents = len(agent_classifiers)
+    if num_agents == 0:
+        return []
+
     old_states = [copy.deepcopy(model.state_dict()) for model in agent_classifiers]
 
     for i in range(num_agents):
@@ -68,11 +73,34 @@ def gossip_average_classifier(agent_classifiers: list, adj_matrix: dict):
     return agent_classifiers
 
 
+def evaluate_combo_model(backbone, classifier, test_loader, device):
+    """
+    Helper function to evaluate a single backbone + classifier pair on a test set.
+    """
+    backbone.eval()
+    classifier.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for images, labels in test_loader:
+            if isinstance(images, list):  # Handle VICRegTransform output
+                images = images[0]
+            images, labels = images.to(device), labels.to(device)
+
+            features = backbone.forward_backbone(images)
+            predictions = classifier(features)
+            _, predicted = torch.max(predictions.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+    return 100 * correct / total
+
+
 def alignment_collaborative_training(
         agent_backbones,
         agent_classifiers,
         agent_train_dataloaders,
-        agent_test_dataloaders,
+        global_test_loader,
         public_dataloader,
         adj_matrix,
         vicreg_criterion,
@@ -80,16 +108,16 @@ def alignment_collaborative_training(
         device,
         comm_rounds,
         local_epochs,
-        learning_rate
+        learning_rate,
+        eval_every
 ):
     """
     The main training loop for the alignment-regularized protocol.
     """
     num_agents = len(agent_backbones)
 
-    # Create optimizers for each backbone and classifier
-    backbone_optimizers = [torch.optim.SGD(backbone.parameters(), lr=learning_rate, momentum=0.9) for backbone in
-                           agent_backbones]
+    backbone_optimizers = [torch.optim.SGD(backbone.parameters(), lr=learning_rate, momentum=0.9, weight_decay=1e-4) for
+                           backbone in agent_backbones]
     classifier_optimizers = [torch.optim.Adam(classifier.parameters(), lr=0.001) for classifier in agent_classifiers]
 
     public_data_iter = iter(public_dataloader)
@@ -104,14 +132,14 @@ def alignment_collaborative_training(
             agent_classifiers[i].train()
 
             for _ in range(local_epochs):
-                for (x_private, x_private_aug), y_private in agent_train_dataloaders[i]:
-                    x_private, x_private_aug, y_private = x_private.to(device), x_private_aug.to(device), y_private.to(
-                        device)
+                for x_views, y_private in agent_train_dataloaders[i]:
+                    x0, x1 = x_views[0].to(device), x_views[1].to(device)
+                    y_private = y_private.to(device)
 
-                    # 1a. Backbone Update (Unsupervised)
+                    # 1a. Backbone Update (Unsupervised VICReg)
                     backbone_optimizers[i].zero_grad()
-                    z0 = agent_backbones[i](x_private)
-                    z1 = agent_backbones[i](x_private_aug)
+                    z0 = agent_backbones[i](x0)
+                    z1 = agent_backbones[i](x1)
                     vicreg_loss = vicreg_criterion(z0, z1)['loss']
                     vicreg_loss.backward()
                     backbone_optimizers[i].step()
@@ -119,7 +147,7 @@ def alignment_collaborative_training(
                     # 1b. Classifier Update (Supervised)
                     classifier_optimizers[i].zero_grad()
                     with torch.no_grad():
-                        features = agent_backbones[i].forward_backbone(x_private)
+                        features = agent_backbones[i].forward_backbone(x0)
                     predictions = agent_classifiers[i](features)
                     classifier_loss = classifier_criterion(predictions, y_private)
                     classifier_loss.backward()
@@ -128,28 +156,21 @@ def alignment_collaborative_training(
         # --- Step 2 & 3: Alignment using Public Data ---
         print("Performing alignment step...")
         try:
-            x_public, _ = next(public_data_iter)
+            (x_public_views, _), _ = next(public_data_iter)
         except StopIteration:
             public_data_iter = iter(public_dataloader)
-            x_public, _ = next(public_data_iter)
-        x_public = x_public.to(device)
+            (x_public_views, _), _ = next(public_data_iter)
+        x_public = x_public_views[0].to(device)
 
-        # Generate embeddings for the public batch
         with torch.no_grad():
             public_embeddings = [bb.forward_backbone(x_public) for bb in agent_backbones]
 
-        # Communication Phase 1: Average the public embeddings
-        # Note: This is a conceptual simplification. In a real implementation,
-        # you would need a gossip protocol for tensors, not just model states.
-        # For now, we simulate it with a simple average.
-        Z_public_avg = torch.mean(torch.stack(public_embeddings), dim=0)
+        avg_public_embeddings = gossip_average_tensors(public_embeddings, adj_matrix)
 
-        # Perform corrective update
         for i in range(num_agents):
             backbone_optimizers[i].zero_grad()
-            # We need to re-compute the embeddings to build the graph for backward()
             Z_public_i = agent_backbones[i].forward_backbone(x_public)
-            alignment_loss = F.mse_loss(Z_public_i, Z_public_avg.detach())
+            alignment_loss = F.mse_loss(Z_public_i, avg_public_embeddings[i].detach())
             alignment_loss.backward()
             backbone_optimizers[i].step()
 
@@ -157,10 +178,16 @@ def alignment_collaborative_training(
         print("Averaging classifiers...")
         agent_classifiers = gossip_average_classifier(agent_classifiers, adj_matrix)
 
-        # --- Evaluation (simplified for this draft) ---
-        # A full implementation would add periodic evaluation here.
+        # --- Periodic Evaluation ---
+        if (round_num + 1) % eval_every == 0:
+            print(f"\n--- Evaluating at Round {round_num + 1} ---")
+            total_acc = 0
+            for i in range(num_agents):
+                acc = evaluate_combo_model(agent_backbones[i], agent_classifiers[i], global_test_loader, device)
+                wandb.log({f"eval/agent_{i}_combo_accuracy": acc}, step=round_num + 1)
+                total_acc += acc
+            avg_acc = total_acc / num_agents
+            wandb.log({"eval/avg_combo_accuracy": avg_acc}, step=round_num + 1)
+            print(f"Average Collaborative Accuracy: {avg_acc:.2f}%")
 
-    # At the end, all agents have their personalized backbones, but they share one
-    # collaboratively trained classifier (we can just take agent 0's).
-    final_classifier = agent_classifiers[0]
-    return agent_backbones, final_classifier
+    return agent_backbones, agent_classifiers

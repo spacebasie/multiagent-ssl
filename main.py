@@ -24,7 +24,7 @@ from training import agent_update, aggregate_models, get_consensus_model, train_
 from decentralized_training import decentralized_personalized_training, evaluate_neighborhood_consensus
 from custom_datasets import (get_officehome_train_test_loaders, get_officehome_domain_split_loaders_personalized,
                              get_officehome_domain_split_loaders_global, get_officehome_hierarchical_loaders, get_public_dataloader)
-from combo_training import alignment_collaborative_training
+from combo_training import alignment_collaborative_training, evaluate_combo_model
 from lightly.transforms.vicreg_transform import VICRegTransform
 import torchvision.transforms as T
 
@@ -464,15 +464,11 @@ def main():
             wandb.run.name = f"combo_domain_{args.topology}_agents_{args.num_agents}"
 
             # This experiment is designed for the domain-shift scenario
-            agent_train_dataloaders, agent_test_dataloaders = get_officehome_domain_split_loaders_personalized(
+            agent_train_dataloaders, _ = get_officehome_domain_split_loaders_personalized(
                 root_dir="datasets/OfficeHomeDataset",
                 num_agents=args.num_agents,
                 batch_size=args.batch_size,
-                # For this mode, the training transform must NOT be a VICReg transform
-                # since we need access to the original image and label for the classifier.
-                # A simple eval_transform is used for both. A more advanced setup would
-                # apply augmentations manually.
-                train_transform=eval_transform_officehome,
+                train_transform=vicreg_transform_officehome,
                 eval_transform=eval_transform_officehome,
                 num_classes=args.num_classes
             )
@@ -481,22 +477,20 @@ def main():
                 root_dir="datasets/OfficeHomeDataset",
                 batch_size=args.batch_size,
                 num_workers=config.NUM_WORKERS,
-                transform=eval_transform_officehome,
-                sample_size=100
+                transform=vicreg_transform_officehome
             )
 
-            # Initialize personalized backbones and a shared classifier
+            # Initialize personalized backbones and a list of identical classifiers
             agent_backbones = [copy.deepcopy(global_model).to(device) for _ in range(args.num_agents)]
-            # Note: We create a list of classifiers. They will be averaged and become identical.
             agent_classifiers = [nn.Linear(config.PROJECTION_INPUT_DIM, args.num_classes).to(device) for _ in
                                  range(args.num_agents)]
 
             # Run the new training protocol
-            final_backbones, final_classifier = alignment_collaborative_training(
+            final_backbones, final_classifiers = alignment_collaborative_training(
                 agent_backbones=agent_backbones,
                 agent_classifiers=agent_classifiers,
                 agent_train_dataloaders=agent_train_dataloaders,
-                agent_test_dataloaders=agent_test_dataloaders,
+                global_test_loader=test_loader_eval,  # Pass the global test set for evaluation
                 public_dataloader=public_dataloader,
                 adj_matrix=adj_matrix,
                 vicreg_criterion=criterion,
@@ -504,17 +498,22 @@ def main():
                 device=device,
                 comm_rounds=args.comm_rounds,
                 local_epochs=args.local_epochs,
-                learning_rate=config.LEARNING_RATE
+                learning_rate=config.LEARNING_RATE,
+                eval_every=args.eval_every
             )
 
-            # Final evaluation: test each personalized backbone with the final shared classifier
+            # Final evaluation: test each personalized backbone with its final shared classifier
             print("\n--- Final Evaluation with Shared Classifier ---")
+            final_accuracies = []
             for i in range(args.num_agents):
                 print(f"Evaluating Agent {i}'s personalized backbone...")
-                # Here we would call a modified linear_evaluation that uses the provided classifier
-                # instead of creating a new one. For now, this is a conceptual placeholder.
-                # final_accuracy = evaluate_with_fixed_classifier(final_backbones[i], final_classifier, ...)
-                # wandb.summary[f"agent_{i}_final_combo_accuracy"] = final_accuracy
+                final_acc = evaluate_combo_model(final_backbones[i], final_classifiers[i], test_loader_eval, device)
+                final_accuracies.append(final_acc)
+                wandb.summary[f"agent_{i}_final_combo_accuracy"] = final_acc
+
+            avg_acc = sum(final_accuracies) / len(final_accuracies) if final_accuracies else 0
+            wandb.summary["average_final_combo_accuracy"] = avg_acc
+            print(f"Final Average Collaborative Accuracy: {avg_acc:.2f}%")
 
             final_model_to_eval = None
 

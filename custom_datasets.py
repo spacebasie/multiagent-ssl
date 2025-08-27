@@ -309,7 +309,6 @@ def get_officehome_hierarchical_loaders(
     return agent_train_dataloaders, agent_test_dataloaders
 
 
-
 def get_public_dataloader(root_dir, batch_size, num_workers, transform, sample_size=100):
     """
     Creates a dataloader for a small, public dataset for alignment.
@@ -318,7 +317,6 @@ def get_public_dataloader(root_dir, batch_size, num_workers, transform, sample_s
     # Use the 'RealWorld' domain as the public set
     public_dataset_full = OfficeHomeDataset(root_dir=root_dir, selected_domains=["RealWorld"])
 
-    # Create a random subset
     indices = torch.randperm(len(public_dataset_full))[:sample_size]
     public_dataset_subset = Subset(public_dataset_full, indices)
 
@@ -326,6 +324,7 @@ def get_public_dataloader(root_dir, batch_size, num_workers, transform, sample_s
         CustomDataset(public_dataset_subset, transform=transform),
         batch_size=batch_size,
         shuffle=True,
-        num_workers=num_workers
+        num_workers=num_workers,
+        drop_last=True  # Important for alignment batch consistency
     )
     return public_dataloader
