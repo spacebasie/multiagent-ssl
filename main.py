@@ -23,7 +23,8 @@ from network import set_network_topology, gossip_average, set_hierarchical_topol
 from training import agent_update, aggregate_models, get_consensus_model, train_one_epoch_centralized
 from decentralized_training import decentralized_personalized_training, evaluate_neighborhood_consensus
 from custom_datasets import (get_officehome_train_test_loaders, get_officehome_domain_split_loaders_personalized,
-                             get_officehome_domain_split_loaders_global, get_officehome_hierarchical_loaders)
+                             get_officehome_domain_split_loaders_global, get_officehome_hierarchical_loaders, get_public_dataloader)
+from combo_training import alignment_collaborative_training
 from lightly.transforms.vicreg_transform import VICRegTransform
 import torchvision.transforms as T
 
@@ -50,7 +51,7 @@ def parse_arguments():
     parser.add_argument('--mode', type=str, default='centralized', choices=['centralized', 'federated', 'decentralized'])
     parser.add_argument('--dataset', type=str, default='cifar10', choices=['cifar10', 'cifar100', 'office_home'])
     parser.add_argument('--heterogeneity_type', type=str, default='label_skew',
-                        choices=['label_skew', 'label_skew_personalized', 'domain_shift', 'office_random', 'office_domain_split', 'office_hierarchical'],
+                        choices=['label_skew', 'label_skew_personalized', 'domain_shift', 'office_random', 'office_domain_split', 'office_hierarchical', 'combo_domain'],
                         help='The type of data heterogeneity for decentralized mode.')
     parser.add_argument('--topology', type=str, default=config.NETWORK_TOPOLOGY, choices=['ring', 'fully_connected', 'random', 'disconnected'],
                         help='Network topology for decentralized mode.')
@@ -457,7 +458,63 @@ def main():
                     eval_epochs=config.EVAL_EPOCHS,
                     batch_size=args.batch_size  # Pass the batch size
                 )
+            final_model_to_eval = None
 
+        elif args.heterogeneity_type == 'combo_domain':
+            wandb.run.name = f"combo_domain_{args.topology}_agents_{args.num_agents}"
+
+            # This experiment is designed for the domain-shift scenario
+            agent_train_dataloaders, agent_test_dataloaders = get_officehome_domain_split_loaders_personalized(
+                root_dir="datasets/OfficeHomeDataset",
+                num_agents=args.num_agents,
+                batch_size=args.batch_size,
+                # For this mode, the training transform must NOT be a VICReg transform
+                # since we need access to the original image and label for the classifier.
+                # A simple eval_transform is used for both. A more advanced setup would
+                # apply augmentations manually.
+                train_transform=eval_transform_officehome,
+                eval_transform=eval_transform_officehome,
+                num_classes=args.num_classes
+            )
+
+            public_dataloader = get_public_dataloader(
+                root_dir="datasets/OfficeHomeDataset",
+                batch_size=args.batch_size,
+                num_workers=config.NUM_WORKERS,
+                transform=eval_transform_officehome,
+                sample_size=100
+            )
+
+            # Initialize personalized backbones and a shared classifier
+            agent_backbones = [copy.deepcopy(global_model).to(device) for _ in range(args.num_agents)]
+            # Note: We create a list of classifiers. They will be averaged and become identical.
+            agent_classifiers = [nn.Linear(config.PROJECTION_INPUT_DIM, args.num_classes).to(device) for _ in
+                                 range(args.num_agents)]
+
+            # Run the new training protocol
+            final_backbones, final_classifier = alignment_collaborative_training(
+                agent_backbones=agent_backbones,
+                agent_classifiers=agent_classifiers,
+                agent_train_dataloaders=agent_train_dataloaders,
+                agent_test_dataloaders=agent_test_dataloaders,
+                public_dataloader=public_dataloader,
+                adj_matrix=adj_matrix,
+                vicreg_criterion=criterion,
+                classifier_criterion=nn.CrossEntropyLoss(),
+                device=device,
+                comm_rounds=args.comm_rounds,
+                local_epochs=args.local_epochs,
+                learning_rate=config.LEARNING_RATE
+            )
+
+            # Final evaluation: test each personalized backbone with the final shared classifier
+            print("\n--- Final Evaluation with Shared Classifier ---")
+            for i in range(args.num_agents):
+                print(f"Evaluating Agent {i}'s personalized backbone...")
+                # Here we would call a modified linear_evaluation that uses the provided classifier
+                # instead of creating a new one. For now, this is a conceptual placeholder.
+                # final_accuracy = evaluate_with_fixed_classifier(final_backbones[i], final_classifier, ...)
+                # wandb.summary[f"agent_{i}_final_combo_accuracy"] = final_accuracy
 
             final_model_to_eval = None
 
