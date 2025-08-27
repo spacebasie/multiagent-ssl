@@ -25,7 +25,7 @@ EPOCHS = 200 # A reasonable number for a single run
 # --- General Training Parameters ---
 BATCH_SIZE = 256 # For CIFAR-10, 256 is a good batch size
 NUM_WORKERS = 4
-LEARNING_RATE = 0.01 # For home office we try smaller than 0.01 (which works for cifar-10), 0.001 for office-home
+LEARNING_RATE = 0.001 # For home office we try smaller than 0.01 (which works for cifar-10), 0.001 for office-home
 
 # --- Model Parameters ---
 PROJECTION_INPUT_DIM = 512
