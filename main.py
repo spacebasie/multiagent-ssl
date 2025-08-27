@@ -468,6 +468,7 @@ def main():
                 root_dir="datasets/OfficeHomeDataset",
                 num_agents=args.num_agents,
                 batch_size=args.batch_size,
+                num_workers=config.NUM_WORKERS,
                 train_transform=vicreg_transform_officehome,
                 eval_transform=eval_transform_officehome,
                 num_classes=args.num_classes
