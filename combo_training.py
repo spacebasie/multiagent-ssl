@@ -156,10 +156,11 @@ def alignment_collaborative_training(
         # --- Step 2 & 3: Alignment using Public Data ---
         print("Performing alignment step...")
         try:
-            (x_public_views, _), _ = next(public_data_iter)
+            x_public_views, _ = next(public_data_iter)
         except StopIteration:
             public_data_iter = iter(public_dataloader)
-            (x_public_views, _), _ = next(public_data_iter)
+            x_public_views, _ = next(public_data_iter)
+            
         x_public = x_public_views[0].to(device)
 
         with torch.no_grad():
