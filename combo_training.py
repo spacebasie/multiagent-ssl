@@ -160,7 +160,7 @@ def alignment_collaborative_training(
         except StopIteration:
             public_data_iter = iter(public_dataloader)
             x_public_views, _ = next(public_data_iter)
-            
+
         x_public = x_public_views[0].to(device)
 
         with torch.no_grad():
