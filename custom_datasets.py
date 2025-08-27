@@ -292,8 +292,9 @@ def get_officehome_hierarchical_loaders(
                 agent_train_set, agent_test_set = random_split(agent_dataset, [train_size, test_size])
 
                 agent_train_dataloaders.append(
-                    DataLoader(CustomDataset(agent_train_set, transform=train_transform), batch_size=batch_size,
-                               shuffle=True, num_workers=num_workers)
+                    DataLoader(CustomDataset(agent_train_set, transform=train_transform),
+                               batch_size=batch_size, shuffle=True,
+                               num_workers=num_workers, drop_last=True)
                 )
                 agent_test_dataloaders.append(
                     DataLoader(CustomDataset(agent_test_set, transform=eval_transform), batch_size=batch_size,
