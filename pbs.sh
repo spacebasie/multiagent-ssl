@@ -72,9 +72,9 @@ python main.py \
   --topology 'fully_connected' \
   --num_agents 4 \
   --num_classes 10 \
-  --comm_rounds 10 \
+  --comm_rounds 100 \
   --local_epochs 1 \
-  --eval_every 2
+  --eval_every 5
 
 
 echo "Job finished at $(date)"
