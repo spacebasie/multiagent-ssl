@@ -11,7 +11,7 @@ import copy
 import wandb
 from training import get_consensus_model
 from network import gossip_average
-from evaluate import linear_evaluation, plot_representation_angles, plot_tsne  # We can reuse this for the final eval
+from evaluate import linear_evaluation, plot_tsne, calculate_representation_angles, plot_angle_evolution  # We can reuse this for the final eval
 from config import KNN_K, KNN_TEMPERATURE
 
 
@@ -123,6 +123,7 @@ def alignment_collaborative_training(
     classifier_optimizers = [torch.optim.Adam(classifier.parameters(), lr=0.001) for classifier in agent_classifiers]
 
     public_data_iter = iter(public_dataloader)
+    angle_history = []
 
     for round_num in range(comm_rounds):
         print(f"\n--- Round {round_num + 1}/{comm_rounds} ---")
@@ -193,13 +194,16 @@ def alignment_collaborative_training(
             wandb.log({"eval/avg_combo_accuracy": avg_acc}, step=round_num + 1)
             print(f"Average Collaborative Accuracy: {avg_acc:.2f}%")
 
-            plot_representation_angles(
+            angles_this_round = calculate_representation_angles(
                 agent_backbones=agent_backbones,
                 public_dataloader=public_dataloader,
-                device=device,
-                step=round_num + 1,
-                plot_title=f"Representation Angles at Round"
+                device=device
             )
+            if angles_this_round:
+                angle_history.append(angles_this_round)
+
+            # --- NEW: After all rounds are complete, generate the final evolution plot ---
+        plot_angle_evolution(angle_history, eval_every)
 
     return agent_backbones, agent_classifiers
 
