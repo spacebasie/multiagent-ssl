@@ -69,12 +69,12 @@ python main.py \
   --mode 'decentralized' \
   --dataset 'office_home' \
   --heterogeneity_type 'combo_domain' \
-  --topology 'random' \
+  --topology 'fully_connected' \
   --num_agents 4 \
   --num_classes 10 \
-  --comm_rounds 20 \
+  --comm_rounds 200 \
   --local_epochs 1 \
-  --eval_every 2 \
+  --eval_every 5 \
   --alignment_strength 25
 
 
