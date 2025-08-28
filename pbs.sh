@@ -70,7 +70,7 @@ python main.py \
   --dataset 'office_home' \
   --heterogeneity_type 'combo_domain' \
   --topology 'random' \
-  --num_agents 8 \
+  --num_agents 4 \
   --num_classes 10 \
   --comm_rounds 200 \
   --local_epochs 1 \
