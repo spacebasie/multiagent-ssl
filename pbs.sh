@@ -75,7 +75,7 @@ python main.py \
   --comm_rounds 20 \
   --local_epochs 1 \
   --eval_every 5 \
-  --alignment_strength 5
+  --alignment_strength 25
 
 
 echo "Job finished at $(date)"
