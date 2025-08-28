@@ -235,7 +235,7 @@ def plot_pca(model, test_loader, device, plot_title="PCA Visualization"):
     plt.close(fig)
 
 
-def plot_representation_angles(agent_backbones, public_dataloader, device,
+def plot_representation_angles(agent_backbones, public_dataloader, device, step,
                                plot_title="Representation Alignment Angles"):
     """
     Measures the angle between representations of different agents on public data and logs a plot.
@@ -302,7 +302,7 @@ def plot_representation_angles(agent_backbones, public_dataloader, device,
     ax.set_xlabel('Pairwise Agent Representations')
     ax.grid(True, linestyle='--', alpha=0.6)
 
-    # Log the plot to Weights & Biases
-    wandb.log({plot_title: fig})
+    # Log the plot to Weights & Biases, now with the step argument
+    wandb.log({plot_title: fig}, step=step)
     print(f"'{plot_title}' logged to W&B.")
     plt.close(fig)

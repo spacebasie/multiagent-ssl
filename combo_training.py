@@ -11,7 +11,7 @@ import copy
 import wandb
 from training import get_consensus_model
 from network import gossip_average
-from evaluate import linear_evaluation, plot_representation_angles  # We can reuse this for the final eval
+from evaluate import linear_evaluation, plot_representation_angles, plot_tsne  # We can reuse this for the final eval
 from config import KNN_K, KNN_TEMPERATURE
 
 
@@ -183,21 +183,22 @@ def alignment_collaborative_training(
 
         # --- Periodic Evaluation ---
         if (round_num + 1) % eval_every == 0:
-        #     print(f"\n--- Evaluating at Round {round_num + 1} ---")
-        #     total_acc = 0
-        #     for i in range(num_agents):
-        #         acc = evaluate_combo_model(agent_backbones[i], agent_classifiers[i], global_test_loader, device)
-        #         wandb.log({f"eval/agent_{i}_combo_accuracy": acc}, step=round_num + 1)
-        #         total_acc += acc
-        #     avg_acc = total_acc / num_agents
-        #     wandb.log({"eval/avg_combo_accuracy": avg_acc}, step=round_num + 1)
-        #     print(f"Average Collaborative Accuracy: {avg_acc:.2f}%")
+            print(f"\n--- Evaluating at Round {round_num + 1} ---")
+            total_acc = 0
+            for i in range(num_agents):
+                acc = evaluate_combo_model(agent_backbones[i], agent_classifiers[i], global_test_loader, device)
+                wandb.log({f"eval/agent_{i}_combo_accuracy": acc}, step=round_num + 1)
+                total_acc += acc
+            avg_acc = total_acc / num_agents
+            wandb.log({"eval/avg_combo_accuracy": avg_acc}, step=round_num + 1)
+            print(f"Average Collaborative Accuracy: {avg_acc:.2f}%")
 
             plot_representation_angles(
                 agent_backbones=agent_backbones,
                 public_dataloader=public_dataloader,
                 device=device,
-                plot_title=f"Representation Angles at Round {round_num + 1}"
+                step=round_num + 1,
+                plot_title=f"Representation Angles at Round"
             )
 
     return agent_backbones, agent_classifiers
@@ -235,3 +236,12 @@ def final_combo_evaluation(
     avg_acc = sum(final_accuracies) / len(final_accuracies) if final_accuracies else 0
     wandb.summary["average_final_combo_accuracy"] = avg_acc
     print(f"\nFinal Average Collaborative Accuracy: {avg_acc:.2f}%")
+
+    print("\n--- Generating Final t-SNE Visualizations ---")
+    for i, backbone in enumerate(final_backbones):
+        plot_tsne(
+            model=backbone,
+            test_loader=global_test_loader,
+            device=device,
+            plot_title=f"Final t-SNE for Agent {i}'s Backbone"
+        )
