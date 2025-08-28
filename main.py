@@ -24,7 +24,7 @@ from training import agent_update, aggregate_models, get_consensus_model, train_
 from decentralized_training import decentralized_personalized_training, evaluate_neighborhood_consensus
 from custom_datasets import (get_officehome_train_test_loaders, get_officehome_domain_split_loaders_personalized,
                              get_officehome_domain_split_loaders_global, get_officehome_hierarchical_loaders, get_public_dataloader)
-from combo_training import alignment_collaborative_training, evaluate_combo_model
+from combo_training import alignment_collaborative_training, evaluate_combo_model, final_combo_evaluation
 from lightly.transforms.vicreg_transform import VICRegTransform
 import torchvision.transforms as T
 
@@ -63,10 +63,12 @@ def parse_arguments():
     parser.add_argument('--eval_every', type=int, default=config.EVAL_EVERY)
     parser.add_argument('--num_classes', type=int, default=0,
                         help='Number of classes to use from the dataset (0 for all).')
-    parser.add_argument('--num_neighborhoods', type=int, default=2,
-                        help='Number of neighborhoods for hierarchical setup.')
-    parser.add_argument('--agents_per_neighborhood', type=int, default=4,
-                        help='Number of agents per neighborhood for hierarchical setup.')
+    # parser.add_argument('--num_neighborhoods', type=int, default=2,
+    #                     help='Number of neighborhoods for hierarchical setup.')
+    # parser.add_argument('--agents_per_neighborhood', type=int, default=4,
+    #                     help='Number of agents per neighborhood for hierarchical setup.')
+    parser.add_argument('--alignment_strength', type=int, default=1,
+                        help='Strength of the alignment regularization for combo_domain heterogeneity.')
     return parser.parse_args()
 
 
@@ -500,21 +502,29 @@ def main():
                 comm_rounds=args.comm_rounds,
                 local_epochs=args.local_epochs,
                 learning_rate=config.LEARNING_RATE,
-                eval_every=args.eval_every
+                eval_every=args.eval_every,
+                alignment_strength=args.alignment_strength
             )
 
             # Final evaluation: test each personalized backbone with its final shared classifier
-            print("\n--- Final Evaluation with Shared Classifier ---")
-            final_accuracies = []
-            for i in range(args.num_agents):
-                print(f"Evaluating Agent {i}'s personalized backbone...")
-                final_acc = evaluate_combo_model(final_backbones[i], final_classifiers[i], test_loader_eval, device)
-                final_accuracies.append(final_acc)
-                wandb.summary[f"agent_{i}_final_combo_accuracy"] = final_acc
+            # print("\n--- Final Evaluation with Shared Classifier ---")
+            # final_accuracies = []
+            # for i in range(args.num_agents):
+            #     print(f"Evaluating Agent {i}'s personalized backbone...")
+            #     final_acc = evaluate_combo_model(final_backbones[i], final_classifiers[i], test_loader_eval, device)
+            #     final_accuracies.append(final_acc)
+            #     wandb.summary[f"agent_{i}_final_combo_accuracy"] = final_acc
+            #
+            # avg_acc = sum(final_accuracies) / len(final_accuracies) if final_accuracies else 0
+            # wandb.summary["average_final_combo_accuracy"] = avg_acc
+            # print(f"Final Average Collaborative Accuracy: {avg_acc:.2f}%")
 
-            avg_acc = sum(final_accuracies) / len(final_accuracies) if final_accuracies else 0
-            wandb.summary["average_final_combo_accuracy"] = avg_acc
-            print(f"Final Average Collaborative Accuracy: {avg_acc:.2f}%")
+            final_combo_evaluation(
+                final_backbones=final_backbones,
+                final_classifiers=final_classifiers,
+                global_test_loader=test_loader_eval,
+                device=device
+            )
 
             final_model_to_eval = None
 

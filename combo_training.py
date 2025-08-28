@@ -9,6 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import copy
 import wandb
+from training import get_consensus_model
 from network import gossip_average
 from evaluate import linear_evaluation  # We can reuse this for the final eval
 from config import KNN_K, KNN_TEMPERATURE
@@ -109,7 +110,8 @@ def alignment_collaborative_training(
         comm_rounds,
         local_epochs,
         learning_rate,
-        eval_every
+        eval_every,
+        alignment_strength
 ):
     """
     The main training loop for the alignment-regularized protocol.
@@ -171,7 +173,7 @@ def alignment_collaborative_training(
         for i in range(num_agents):
             backbone_optimizers[i].zero_grad()
             Z_public_i = agent_backbones[i].forward_backbone(x_public)
-            alignment_loss = F.mse_loss(Z_public_i, avg_public_embeddings[i].detach())
+            alignment_loss = alignment_strength * F.mse_loss(Z_public_i, avg_public_embeddings[i].detach())
             alignment_loss.backward()
             backbone_optimizers[i].step()
 
@@ -180,15 +182,49 @@ def alignment_collaborative_training(
         agent_classifiers = gossip_average_classifier(agent_classifiers, adj_matrix)
 
         # --- Periodic Evaluation ---
-        if (round_num + 1) % eval_every == 0:
-            print(f"\n--- Evaluating at Round {round_num + 1} ---")
-            total_acc = 0
-            for i in range(num_agents):
-                acc = evaluate_combo_model(agent_backbones[i], agent_classifiers[i], global_test_loader, device)
-                wandb.log({f"eval/agent_{i}_combo_accuracy": acc}, step=round_num + 1)
-                total_acc += acc
-            avg_acc = total_acc / num_agents
-            wandb.log({"eval/avg_combo_accuracy": avg_acc}, step=round_num + 1)
-            print(f"Average Collaborative Accuracy: {avg_acc:.2f}%")
+        # if (round_num + 1) % eval_every == 0:
+        #     print(f"\n--- Evaluating at Round {round_num + 1} ---")
+        #     total_acc = 0
+        #     for i in range(num_agents):
+        #         acc = evaluate_combo_model(agent_backbones[i], agent_classifiers[i], global_test_loader, device)
+        #         wandb.log({f"eval/agent_{i}_combo_accuracy": acc}, step=round_num + 1)
+        #         total_acc += acc
+        #     avg_acc = total_acc / num_agents
+        #     wandb.log({"eval/avg_combo_accuracy": avg_acc}, step=round_num + 1)
+        #     print(f"Average Collaborative Accuracy: {avg_acc:.2f}%")
 
     return agent_backbones, agent_classifiers
+
+
+def final_combo_evaluation(
+        final_backbones,
+        final_classifiers,
+        global_test_loader,
+        device
+):
+    """
+    Performs the final, rigorous evaluation using a single, shared classifier.
+    This is called only once at the end of all training rounds.
+    """
+    print("\n--- Starting Final Rigorous Evaluation with Shared Classifier ---")
+    num_agents = len(final_backbones)
+
+    # 1. Create the single, shared classifier by averaging all final classifiers.
+    #    - For the 'disconnected' run, this averages misaligned classifiers.
+    #    - For the 'connected' run, this averages already-aligned classifiers.
+    print("Creating final shared consensus classifier...")
+    shared_classifier = get_consensus_model(final_classifiers, device)
+
+    # 2. Evaluate each agent's personalized backbone with this single shared classifier.
+    final_accuracies = []
+    for i in range(num_agents):
+        print(f"Evaluating Agent {i}'s personalized backbone with the shared classifier...")
+        # The evaluate_combo_model helper is perfect for this task
+        acc = evaluate_combo_model(final_backbones[i], shared_classifier, global_test_loader, device)
+        final_accuracies.append(acc)
+        wandb.summary[f"agent_{i}_final_combo_accuracy"] = acc
+
+    # 3. Log the final average accuracy.
+    avg_acc = sum(final_accuracies) / len(final_accuracies) if final_accuracies else 0
+    wandb.summary["average_final_combo_accuracy"] = avg_acc
+    print(f"\nFinal Average Collaborative Accuracy: {avg_acc:.2f}%")
