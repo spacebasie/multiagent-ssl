@@ -72,9 +72,9 @@ python main.py \
   --topology 'fully_connected' \
   --num_agents 4 \
   --num_classes 10 \
-  --comm_rounds 200 \
+  --comm_rounds 20 \
   --local_epochs 1 \
-  --eval_every 5 \
+  --eval_every 2 \
   --alignment_strength 25
 
 

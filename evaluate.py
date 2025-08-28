@@ -276,38 +276,38 @@ def calculate_representation_angles(agent_backbones, public_dataloader, device):
 
 def plot_angle_evolution(angle_history, eval_every, plot_title="Representation Angle Evolution"):
     """
-    Takes a history of angle distributions and plots their evolution over communication rounds.
-    This is called only once at the end of training and includes styling to prevent wandb errors.
+    Takes a history of angle distributions and plots their evolution over time
+    using a median line and a shaded interquartile range (IQR).
     """
     print(f"\n--- Generating and logging '{plot_title}' to W&B ---")
     if not angle_history:
         print("Angle history is empty, skipping final plot.")
         return
 
+    # Calculate statistics for each round
+    medians = [np.median(angles) for angles in angle_history]
+    q1s = [np.percentile(angles, 25) for angles in angle_history]
+    q3s = [np.percentile(angles, 75) for angles in angle_history]
+
+    rounds = [(i + 1) * eval_every for i in range(len(angle_history))]
+
     fig, ax = plt.subplots(figsize=(15, 8))
 
-    # Define explicit styles for the boxplot to avoid the 'color=none' error
-    boxprops = dict(facecolor='lightblue', color='blue', linewidth=1.5)
-    medianprops = dict(color='red', linewidth=2.5)
-    flierprops = dict(marker='o', markerfacecolor='gray', markersize=5, linestyle='none', markeredgecolor='black')
+    # Plot the median line
+    ax.plot(rounds, medians, 'o-', color='blue', label='Median Angle')
 
-    # matplotlib's boxplot can directly handle a list of lists to create multiple boxplots
-    ax.boxplot(angle_history,
-               patch_artist=True,
-               boxprops=boxprops,
-               medianprops=medianprops,
-               flierprops=flierprops)
-
-    # Create meaningful labels for the x-axis corresponding to the round number
-    rounds = [str((i + 1) * eval_every) for i in range(len(angle_history))]
-    ax.set_xticklabels(rounds)
+    # Plot the shaded IQR
+    ax.fill_between(rounds, q1s, q3s, color='lightblue', alpha=0.5, label='Interquartile Range (25%-75%)')
 
     ax.set_title(plot_title, fontsize=16)
     ax.set_xlabel('Communication Round', fontsize=12)
     ax.set_ylabel('Angle (°)', fontsize=12)
+    ax.legend()
     ax.grid(True, linestyle='--', alpha=0.6)
 
-    # Log the single, final plot to W&B. No step is needed as this is a summary artifact.
+    # Set a more reasonable y-axis limit if needed, e.g., ax.set_ylim(0, 50)
+
+    # Log the single, final plot to W&B
     wandb.log({plot_title: fig})
     print(f"'{plot_title}' logged to W&B.")
     plt.close(fig)
