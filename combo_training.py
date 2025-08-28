@@ -182,16 +182,16 @@ def alignment_collaborative_training(
         agent_classifiers = gossip_average_classifier(agent_classifiers, adj_matrix)
 
         # --- Periodic Evaluation ---
-        # if (round_num + 1) % eval_every == 0:
-        #     print(f"\n--- Evaluating at Round {round_num + 1} ---")
-        #     total_acc = 0
-        #     for i in range(num_agents):
-        #         acc = evaluate_combo_model(agent_backbones[i], agent_classifiers[i], global_test_loader, device)
-        #         wandb.log({f"eval/agent_{i}_combo_accuracy": acc}, step=round_num + 1)
-        #         total_acc += acc
-        #     avg_acc = total_acc / num_agents
-        #     wandb.log({"eval/avg_combo_accuracy": avg_acc}, step=round_num + 1)
-        #     print(f"Average Collaborative Accuracy: {avg_acc:.2f}%")
+        if (round_num + 1) % eval_every == 0:
+            print(f"\n--- Evaluating at Round {round_num + 1} ---")
+            total_acc = 0
+            for i in range(num_agents):
+                acc = evaluate_combo_model(agent_backbones[i], agent_classifiers[i], global_test_loader, device)
+                wandb.log({f"eval/agent_{i}_combo_accuracy": acc}, step=round_num + 1)
+                total_acc += acc
+            avg_acc = total_acc / num_agents
+            wandb.log({"eval/avg_combo_accuracy": avg_acc}, step=round_num + 1)
+            print(f"Average Collaborative Accuracy: {avg_acc:.2f}%")
 
     return agent_backbones, agent_classifiers
 
