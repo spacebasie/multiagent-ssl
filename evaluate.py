@@ -12,6 +12,7 @@ from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 import numpy as np
 import matplotlib.pyplot as plt
+from itertools import combinations
 
 
 def linear_evaluation(model, proj_output_dim, train_loader, test_loader, epochs, device, agent_id=None):
@@ -229,6 +230,79 @@ def plot_pca(model, test_loader, device, plot_title="PCA Visualization"):
     fig.tight_layout()
 
     # 4. Log the plot to Weights & Biases
+    wandb.log({plot_title: fig})
+    print(f"'{plot_title}' logged to W&B.")
+    plt.close(fig)
+
+
+def plot_representation_angles(agent_backbones, public_dataloader, device,
+                               plot_title="Representation Alignment Angles"):
+    """
+    Measures the angle between representations of different agents on public data and logs a plot.
+    """
+    print(f"\n--- Generating and logging '{plot_title}' to W&B ---")
+
+    # Ensure there are at least two models to compare
+    if len(agent_backbones) < 2:
+        print("Skipping angle plot: a minimum of two agents is required.")
+        return
+
+    # Set all models to evaluation mode
+    for backbone in agent_backbones:
+        backbone.eval()
+
+    # Get a single batch of public data to use as a common reference
+    try:
+        public_data_iter = iter(public_dataloader)
+        x_public_views, _ = next(public_data_iter)
+        x_public = x_public_views[0].to(device)
+    except StopIteration:
+        print("Warning: Public dataloader is empty. Skipping angle plot.")
+        return
+
+    # --- Feature Extraction ---
+    all_features = []
+    with torch.no_grad():
+        for backbone in agent_backbones:
+            # Get features and normalize them to unit vectors
+            features = backbone.forward_backbone(x_public)
+            normalized_features = F.normalize(features, p=2, dim=1)
+            all_features.append(normalized_features)
+
+    # --- Angle Calculation ---
+    all_angles = []
+    # Use itertools.combinations to get all unique pairs of agents (e.g., (0,1), (0,2), (1,2))
+    agent_pairs = combinations(range(len(agent_backbones)), 2)
+
+    for i, j in agent_pairs:
+        features_i = all_features[i]
+        features_j = all_features[j]
+
+        # Calculate cosine similarity for each sample in the batch
+        # The result is a vector of similarities, one for each image
+        cosine_similarities = (features_i * features_j).sum(dim=1)
+
+        # Clamp values to avoid numerical errors with acos
+        cosine_similarities = torch.clamp(cosine_similarities, -1.0, 1.0)
+
+        # Convert similarities to angles in degrees
+        angles = torch.acos(cosine_similarities) * (180 / np.pi)
+        all_angles.extend(angles.cpu().numpy())
+
+    # --- Plotting ---
+    if not all_angles:
+        print("No angles were calculated. Skipping plot.")
+        return
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.boxplot(all_angles, vert=True, patch_artist=True, whiskerprops=dict(linestyle='-'), capprops=dict(linestyle='-'))
+
+    ax.set_title(plot_title)
+    ax.set_ylabel('Angle (°)')
+    ax.set_xlabel('Pairwise Agent Representations')
+    ax.grid(True, linestyle='--', alpha=0.6)
+
+    # Log the plot to Weights & Biases
     wandb.log({plot_title: fig})
     print(f"'{plot_title}' logged to W&B.")
     plt.close(fig)
