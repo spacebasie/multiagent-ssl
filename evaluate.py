@@ -278,11 +278,16 @@ def plot_angle_evolution(angle_history, eval_every, plot_title="Representation A
     """
     Takes a history of angle distributions and plots their evolution over time
     using a median line and a shaded interquartile range (IQR).
+    This version uses custom legend handles to prevent wandb conversion errors.
     """
     print(f"\n--- Generating and logging '{plot_title}' to W&B ---")
     if not angle_history:
         print("Angle history is empty, skipping final plot.")
         return
+
+    # --- Add this import for custom legend elements ---
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
 
     # Calculate statistics for each round
     medians = [np.median(angles) for angles in angle_history]
@@ -293,19 +298,22 @@ def plot_angle_evolution(angle_history, eval_every, plot_title="Representation A
 
     fig, ax = plt.subplots(figsize=(15, 8))
 
-    # Plot the median line
+    # Plot the data as before
     ax.plot(rounds, medians, 'o-', color='blue', label='Median Angle')
-
-    # Plot the shaded IQR
     ax.fill_between(rounds, q1s, q3s, color='lightblue', alpha=0.5, label='Interquartile Range (25%-75%)')
+
+    # --- FIX: Create custom, simple legend handles ---
+    legend_elements = [
+        Line2D([0], [0], color='blue', lw=2, marker='o', markersize=8, label='Median Angle'),
+        Patch(facecolor='lightblue', alpha=0.5, label='Interquartile Range (25%-75%)')
+    ]
+    ax.legend(handles=legend_elements)
+    # --- END FIX ---
 
     ax.set_title(plot_title, fontsize=16)
     ax.set_xlabel('Communication Round', fontsize=12)
     ax.set_ylabel('Angle (°)', fontsize=12)
-    ax.legend()
     ax.grid(True, linestyle='--', alpha=0.6)
-
-    # Set a more reasonable y-axis limit if needed, e.g., ax.set_ylim(0, 50)
 
     # Log the single, final plot to W&B
     wandb.log({plot_title: fig})
