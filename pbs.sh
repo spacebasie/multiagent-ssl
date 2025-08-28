@@ -71,8 +71,8 @@ python main.py \
   --heterogeneity_type 'combo_domain' \
   --topology 'disconnected' \
   --num_agents 4 \
-  --num_classes 10 \
-  --comm_rounds 200 \
+  --num_classes 20 \
+  --comm_rounds 100 \
   --local_epochs 1 \
   --eval_every 5
 
