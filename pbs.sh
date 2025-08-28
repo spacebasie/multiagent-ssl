@@ -69,13 +69,13 @@ python main.py \
   --mode 'decentralized' \
   --dataset 'office_home' \
   --heterogeneity_type 'combo_domain' \
-  --topology 'disconnected' \
+  --topology 'fully_connected' \
   --num_agents 4 \
   --num_classes 10 \
   --comm_rounds 20 \
   --local_epochs 1 \
   --eval_every 5 \
-  --alignment_strength 1
+  --alignment_strength 5
 
 
 echo "Job finished at $(date)"
