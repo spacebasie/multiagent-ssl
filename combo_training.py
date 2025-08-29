@@ -197,6 +197,7 @@ def alignment_collaborative_training(
             angles_this_round = calculate_representation_angles(
                 agent_backbones=agent_backbones,
                 public_dataloader=public_dataloader,
+                global_test_loader=global_test_loader,
                 device=device
             )
             if angles_this_round:

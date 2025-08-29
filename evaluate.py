@@ -235,7 +235,7 @@ def plot_pca(model, test_loader, device, plot_title="PCA Visualization"):
     plt.close(fig)
 
 
-def calculate_representation_angles(agent_backbones, public_dataloader, device):
+def calculate_representation_angles(agent_backbones, public_dataloader, global_test_loader, device):
     """
     Measures the angle between representations of different agents on public data and returns them.
     This function no longer plots, it only calculates and returns data.
@@ -248,7 +248,7 @@ def calculate_representation_angles(agent_backbones, public_dataloader, device):
         backbone.eval()
 
     try:
-        x_public_views, _ = next(iter(public_dataloader))
+        x_public_views, _ = next(iter(global_test_loader)) # EDIT THIS DEPENDING IF ANGLES ON PUBLIC OR TEST DATA
         x_public = x_public_views[0].to(device)
     except StopIteration:
         print("Warning: Public dataloader is empty. Skipping angle calculation.")
