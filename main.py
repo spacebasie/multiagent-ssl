@@ -522,6 +522,7 @@ def main():
             final_combo_evaluation(
                 final_backbones=final_backbones,
                 final_classifiers=final_classifiers,
+                global_train_loader=train_loader_eval,
                 global_test_loader=test_loader_eval,
                 device=device
             )

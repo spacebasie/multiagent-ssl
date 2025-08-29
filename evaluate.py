@@ -299,10 +299,9 @@ def plot_angle_evolution(angle_history, eval_every, plot_title="Representation A
     ax.plot(rounds, medians, '-', color='blue', label='Median Angle')
 
     # 2. Plot the shaded IQR as before.
-    ax.fill_between(rounds, q1s, q3s, color='lightblue', alpha=0.5, label='Interquartile Range (25%-75%)')
+    ax.scatter(rounds, q1s, color='red', marker='_', s=200, linewidths=1.5, label='25th Percentile')
+    ax.scatter(rounds, q3s, color='red', marker='_', s=200, linewidths=1.5, label='75th Percentile')
 
-    # 3. Let matplotlib create the legend automatically. The legend for a simple line
-    #    and a filled area is something the wandb converter can handle.
     ax.legend()
     # --- END FIX ---
 

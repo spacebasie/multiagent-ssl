@@ -11,7 +11,7 @@ import copy
 import wandb
 from training import get_consensus_model
 from network import gossip_average
-from evaluate import linear_evaluation, plot_tsne, calculate_representation_angles, plot_angle_evolution  # We can reuse this for the final eval
+from evaluate import linear_evaluation, plot_tsne, calculate_representation_angles, plot_angle_evolution, knn_evaluation  # We can reuse this for the final eval
 from config import KNN_K, KNN_TEMPERATURE
 
 
@@ -211,6 +211,7 @@ def alignment_collaborative_training(
 def final_combo_evaluation(
         final_backbones,
         final_classifiers,
+        global_train_loader,
         global_test_loader,
         device
 ):
@@ -240,6 +241,24 @@ def final_combo_evaluation(
     avg_acc = sum(final_accuracies) / len(final_accuracies) if final_accuracies else 0
     wandb.summary["average_final_combo_accuracy"] = avg_acc
     print(f"\nFinal Average Collaborative Accuracy: {avg_acc:.2f}%")
+
+    print("\n--- Evaluating with k-NN ---")
+    final_knn_accuracies = []
+    for i in range(num_agents):
+        print(f"Running k-NN evaluation for Agent {i}'s backbone...")
+        knn_acc = knn_evaluation(
+            model=final_backbones[i],
+            train_loader=global_train_loader,  # Used to build the feature bank
+            test_loader=global_test_loader,
+            device=device
+        )
+        final_knn_accuracies.append(knn_acc)
+        wandb.summary[f"agent_{i}_final_knn_accuracy"] = knn_acc
+
+    avg_knn_acc = sum(final_knn_accuracies) / len(final_knn_accuracies) if final_knn_accuracies else 0
+    wandb.summary["average_final_knn_accuracy"] = avg_knn_acc
+    print(f"\nFinal Average k-NN Accuracy: {avg_knn_acc:.2f}%")
+
 
     print("\n--- Generating Final t-SNE Visualizations ---")
     for i, backbone in enumerate(final_backbones):
