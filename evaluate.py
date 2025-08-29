@@ -278,16 +278,12 @@ def plot_angle_evolution(angle_history, eval_every, plot_title="Representation A
     """
     Takes a history of angle distributions and plots their evolution over time
     using a median line and a shaded interquartile range (IQR).
-    This version uses custom legend handles to prevent wandb conversion errors.
+    This version avoids using plot markers in the legend to prevent wandb conversion errors.
     """
     print(f"\n--- Generating and logging '{plot_title}' to W&B ---")
     if not angle_history:
         print("Angle history is empty, skipping final plot.")
         return
-
-    # --- Add this import for custom legend elements ---
-    from matplotlib.lines import Line2D
-    from matplotlib.patches import Patch
 
     # Calculate statistics for each round
     medians = [np.median(angles) for angles in angle_history]
@@ -298,16 +294,16 @@ def plot_angle_evolution(angle_history, eval_every, plot_title="Representation A
 
     fig, ax = plt.subplots(figsize=(15, 8))
 
-    # Plot the data as before
-    ax.plot(rounds, medians, 'o-', color='blue', label='Median Angle')
+    # --- THE FIX IS HERE ---
+    # 1. Plot the median line WITHOUT the 'o' marker. This creates a simple line.
+    ax.plot(rounds, medians, '-', color='blue', label='Median Angle')
+
+    # 2. Plot the shaded IQR as before.
     ax.fill_between(rounds, q1s, q3s, color='lightblue', alpha=0.5, label='Interquartile Range (25%-75%)')
 
-    # --- FIX: Create custom, simple legend handles ---
-    legend_elements = [
-        Line2D([0], [0], color='blue', lw=2, marker='o', markersize=8, label='Median Angle'),
-        Patch(facecolor='lightblue', alpha=0.5, label='Interquartile Range (25%-75%)')
-    ]
-    ax.legend(handles=legend_elements)
+    # 3. Let matplotlib create the legend automatically. The legend for a simple line
+    #    and a filled area is something the wandb converter can handle.
+    ax.legend()
     # --- END FIX ---
 
     ax.set_title(plot_title, fontsize=16)
