@@ -249,7 +249,7 @@ def calculate_representation_angles(agent_backbones, public_dataloader, global_t
 
     try:
         x_public_views, _ = next(iter(global_test_loader)) # EDIT THIS DEPENDING IF ANGLES ON PUBLIC OR TEST DATA
-        x_public = x_public_views[0].to(device)
+        x_public = x_public_views.to(device)
     except StopIteration:
         print("Warning: Public dataloader is empty. Skipping angle calculation.")
         return None
