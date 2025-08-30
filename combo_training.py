@@ -111,7 +111,9 @@ def alignment_collaborative_training(
         local_epochs,
         learning_rate,
         eval_every,
-        alignment_strength
+        alignment_strength,
+        alignment_only=False,
+        classifier_only=False
 ):
     """
     The main training loop for the alignment-regularized protocol.
@@ -156,31 +158,33 @@ def alignment_collaborative_training(
                     classifier_loss.backward()
                     classifier_optimizers[i].step()
 
-        # --- Step 2 & 3: Alignment using Public Data ---
-        print("Performing alignment step...")
-        try:
-            x_public_views, _ = next(public_data_iter)
-        except StopIteration:
-            public_data_iter = iter(public_dataloader)
-            x_public_views, _ = next(public_data_iter)
+        if not classifier_only:
+            # --- Step 2 & 3: Alignment using Public Data ---
+            print("Performing alignment step...")
+            try:
+                x_public_views, _ = next(public_data_iter)
+            except StopIteration:
+                public_data_iter = iter(public_dataloader)
+                x_public_views, _ = next(public_data_iter)
 
-        x_public = x_public_views[0].to(device)
+            x_public = x_public_views[0].to(device)
 
-        with torch.no_grad():
-            public_embeddings = [bb.forward_backbone(x_public) for bb in agent_backbones]
+            with torch.no_grad():
+                public_embeddings = [bb.forward_backbone(x_public) for bb in agent_backbones]
 
-        avg_public_embeddings = gossip_average_tensors(public_embeddings, adj_matrix)
+            avg_public_embeddings = gossip_average_tensors(public_embeddings, adj_matrix)
 
-        for i in range(num_agents):
-            backbone_optimizers[i].zero_grad()
-            Z_public_i = agent_backbones[i].forward_backbone(x_public)
-            alignment_loss = alignment_strength * F.mse_loss(Z_public_i, avg_public_embeddings[i].detach())
-            alignment_loss.backward()
-            backbone_optimizers[i].step()
+            for i in range(num_agents):
+                backbone_optimizers[i].zero_grad()
+                Z_public_i = agent_backbones[i].forward_backbone(x_public)
+                alignment_loss = alignment_strength * F.mse_loss(Z_public_i, avg_public_embeddings[i].detach())
+                alignment_loss.backward()
+                backbone_optimizers[i].step()
 
-        # --- Step 4: Communication Phase 2 - Collaborate on Classifier ---
-        print("Averaging classifiers...")
-        agent_classifiers = gossip_average_classifier(agent_classifiers, adj_matrix)
+        if not alignment_only:
+            # --- Step 4: Communication Phase 2 - Collaborate on Classifier ---
+            print("Averaging classifiers...")
+            agent_classifiers = gossip_average_classifier(agent_classifiers, adj_matrix)
 
         # --- Periodic Evaluation ---
         if (round_num + 1) % eval_every == 0:

@@ -69,6 +69,10 @@ def parse_arguments():
     #                     help='Number of agents per neighborhood for hierarchical setup.')
     parser.add_argument('--alignment_strength', type=int, default=1,
                         help='Strength of the alignment regularization for combo_domain heterogeneity.')
+    parser.add_argument('--alignment_only', action='store_true',
+                        help='Ablation study: run alignment but not classifier sharing.')
+    parser.add_argument('--classifier_only', action='store_true',
+                        help='Ablation study: run classifier sharing but not alignment.')
     return parser.parse_args()
 
 
@@ -503,7 +507,9 @@ def main():
                 local_epochs=args.local_epochs,
                 learning_rate=config.LEARNING_RATE,
                 eval_every=args.eval_every,
-                alignment_strength=args.alignment_strength
+                alignment_strength=args.alignment_strength,
+                alignment_only=args.alignment_only,
+                classifier_only=args.classifier_sharing_only,
             )
 
             # Final evaluation: test each personalized backbone with its final shared classifier
