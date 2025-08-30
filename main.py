@@ -509,7 +509,7 @@ def main():
                 eval_every=args.eval_every,
                 alignment_strength=args.alignment_strength,
                 alignment_only=args.alignment_only,
-                classifier_only=args.classifier_sharing_only,
+                classifier_only=args.classifier_only,
             )
 
             # Final evaluation: test each personalized backbone with its final shared classifier
