@@ -76,7 +76,7 @@ python main.py \
   --alpha 100 \
   --local_epochs 1 \
   --eval_every 5 \
-  --alignment_only \
+  --classifier_only \
   --alignment_strength 25
 
 
