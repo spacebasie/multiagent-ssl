@@ -65,18 +65,26 @@ echo "Starting Python script..."
 #    --local_epochs 1
 
 #For combo train
+#python main.py \
+#  --mode 'decentralized' \
+#  --dataset 'office_home' \
+#  --heterogeneity_type 'combo_domain' \
+#  --topology 'fully_connected' \
+#  --num_agents 4 \
+#  --num_classes 10 \
+#  --comm_rounds 75 \
+#  --alpha 100 \
+#  --local_epochs 1 \
+#  --eval_every 5 \
+#  --alignment_strength 150
+
+#Centralized Run
 python main.py \
-  --mode 'decentralized' \
+  --mode 'centralized' \
   --dataset 'office_home' \
-  --heterogeneity_type 'combo_domain' \
-  --topology 'fully_connected' \
-  --num_agents 4 \
   --num_classes 10 \
-  --comm_rounds 75 \
-  --alpha 100 \
-  --local_epochs 1 \
+  --epochs 200 \
   --eval_every 5 \
-  --alignment_strength 150
 
 
 echo "Job finished at $(date)"

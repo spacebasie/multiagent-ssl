@@ -197,7 +197,7 @@ def main():
     final_model_to_eval = None
 
     if args.mode == 'centralized':
-        wandb.run.name = f"centralized_{config.DATASET_NAME}_epochs_{args.epochs}"
+        wandb.run.name = f"centralized_{args.dataset}_epochs_{args.epochs}"
         optimizer = torch.optim.SGD(global_model.parameters(), lr=config.LEARNING_RATE, momentum=0.9, weight_decay=1e-4)
         # Use the warmup scheduler
         # scheduler = WarmupCosineAnnealingLR(optimizer, warmup_epochs=10, max_epochs=args.epochs)
