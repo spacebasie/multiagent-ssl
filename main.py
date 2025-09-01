@@ -238,7 +238,7 @@ def main():
                 DataLoader(ds, batch_size=args.batch_size, shuffle=True, num_workers=config.NUM_WORKERS)
                 for ds in active_agent_datasets]
 
-        # --- Federated Training Loop (Unchanged from your working version) ---
+        # --- Federated Training Loop ---
         for round_num in range(args.comm_rounds):
             print(f"\n--- Round {round_num + 1}/{args.comm_rounds} ---")
             agent_models = []

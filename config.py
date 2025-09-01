@@ -16,7 +16,7 @@ INPUT_SIZE = 32
 # --- Federated Learning Parameters ---
 NUM_AGENTS = 10
 COMMUNICATION_ROUNDS = 10
-LOCAL_EPOCHS = 2
+LOCAL_EPOCHS = 1
 NON_IID_ALPHA = 100
 
 # --- Centralized Training Parameters (when NUM_AGENTS = 1) ---
