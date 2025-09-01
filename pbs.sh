@@ -87,13 +87,26 @@ echo "Starting Python script..."
 #  --eval_every 5 \
 
 #Federated Run
+#python main.py \
+#  --mode 'federated' \
+#  --dataset 'office_home' \
+#  --num_agents 4 \
+#  --num_classes 10 \
+#  --comm_rounds 200 \
+#  --local_epochs 1 \
+#  --eval_every 5 \
+
+#Decentralized CIFAR10 Run
 python main.py \
-  --mode 'federated' \
-  --dataset 'office_home' \
-  --num_agents 4 \
-  --num_classes 10 \
+  --mode 'decentralized' \
+  --dataset 'cifar10' \
+  --heterogeneity_type 'combo_label_skew' \
+  --topology 'fully_connected' \
+  --num_agents 5 \
   --comm_rounds 200 \
   --local_epochs 1 \
   --eval_every 5 \
+  --alpha 0.5 \
+  --alignment_strength 25
 
 echo "Job finished at $(date)"

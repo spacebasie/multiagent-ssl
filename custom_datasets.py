@@ -6,6 +6,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader, Subset, random_split
 import torch
 import numpy as np
+import copy
 
 class CustomDataset(Dataset):
     """
@@ -326,5 +327,35 @@ def get_public_dataloader(root_dir, batch_size, num_workers, transform, sample_s
         shuffle=True,
         num_workers=num_workers,
         drop_last=True  # Important for alignment batch consistency
+    )
+    return public_dataloader
+
+
+# In custom_datasets.py
+
+def get_cifar10_public_dataloader(dataset, batch_size, num_workers, sample_size=500):
+    """
+    Creates a dataloader for a small, public CIFAR10 dataset for alignment.
+    This serves the same purpose as the OfficeHome public loader.
+    """
+    print(f"Creating public CIFAR10 dataloader with {sample_size} samples...")
+
+    # Ensure we use the same transform as the main training data
+    public_transform = dataset.transform
+
+    # Create a copy of the dataset to avoid modifying the original
+    public_dataset_full = copy.deepcopy(dataset)
+    public_dataset_full.transform = public_transform
+
+    # Randomly sample a small subset of indices
+    indices = torch.randperm(len(public_dataset_full))[:sample_size]
+    public_dataset_subset = Subset(public_dataset_full, indices)
+
+    public_dataloader = DataLoader(
+        public_dataset_subset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        drop_last=True
     )
     return public_dataloader

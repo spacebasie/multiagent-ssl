@@ -51,7 +51,7 @@ def parse_arguments():
     parser.add_argument('--mode', type=str, default='centralized', choices=['centralized', 'federated', 'decentralized'])
     parser.add_argument('--dataset', type=str, default='cifar10', choices=['cifar10', 'cifar100', 'office_home'])
     parser.add_argument('--heterogeneity_type', type=str, default='label_skew',
-                        choices=['label_skew', 'label_skew_personalized', 'domain_shift', 'office_random', 'office_domain_split', 'office_hierarchical', 'combo_domain'],
+                        choices=['label_skew', 'label_skew_personalized', 'domain_shift', 'office_random', 'office_domain_split', 'office_hierarchical', 'combo_domain', 'combo_label_skew'],
                         help='The type of data heterogeneity for decentralized mode.')
     parser.add_argument('--topology', type=str, default=config.NETWORK_TOPOLOGY, choices=['ring', 'fully_connected', 'random', 'disconnected'],
                         help='Network topology for decentralized mode.')
@@ -220,6 +220,18 @@ def main():
                 knn_acc = knn_evaluation(global_model, train_loader_eval, test_loader_eval, device, config.KNN_K,
                                          config.KNN_TEMPERATURE)
                 wandb.log({"eval/knn_accuracy": knn_acc}, step=epoch + 1)
+
+                print("\n--- Performing periodic linear evaluation ---")
+                linear_acc = linear_evaluation(
+                    model=copy.deepcopy(global_model),  # Use a copy to not interfere with main model
+                    proj_output_dim=config.PROJECTION_INPUT_DIM,
+                    train_loader=train_loader_eval,
+                    test_loader=test_loader_eval,
+                    epochs=config.EVAL_EPOCHS,
+                    device=device
+                )
+                wandb.log({"eval/avg_combo_accuracy": linear_acc}, step=epoch + 1)
+
         final_model_to_eval = global_model
 
 
@@ -265,7 +277,18 @@ def main():
             if (round_num + 1) % args.eval_every == 0:
                 knn_acc = knn_evaluation(global_model, train_loader_eval, test_loader_eval, device, config.KNN_K,
                                          config.KNN_TEMPERATURE)
-                wandb.log({"eval/global_knn_accuracy": knn_acc}, step=round_num + 1)
+                wandb.log({"eval/knn_accuracy": knn_acc}, step=round_num + 1)
+
+                print("\n--- Performing periodic linear evaluation on global model ---")
+                linear_acc = linear_evaluation(
+                    model=copy.deepcopy(global_model),  # Use a copy to not interfere with main model
+                    proj_output_dim=config.PROJECTION_INPUT_DIM,
+                    train_loader=train_loader_eval,
+                    test_loader=test_loader_eval,
+                    epochs=config.EVAL_EPOCHS,
+                    device=device
+                )
+                wandb.log({"eval/avg_combo_accuracy": linear_acc}, step=round_num + 1)
         final_model_to_eval = global_model
 
     elif args.mode == 'decentralized':
@@ -466,6 +489,8 @@ def main():
                 )
             final_model_to_eval = None
 
+
+        # Key method for Office Home Decentralized
         elif args.heterogeneity_type == 'combo_domain':
             wandb.run.name = f"combo_domain_{args.topology}_agents_{args.num_agents}"
 
@@ -524,6 +549,65 @@ def main():
             # avg_acc = sum(final_accuracies) / len(final_accuracies) if final_accuracies else 0
             # wandb.summary["average_final_combo_accuracy"] = avg_acc
             # print(f"Final Average Collaborative Accuracy: {avg_acc:.2f}%")
+
+            final_combo_evaluation(
+                final_backbones=final_backbones,
+                final_classifiers=final_classifiers,
+                global_train_loader=train_loader_eval,
+                global_test_loader=test_loader_eval,
+                device=device
+            )
+
+            final_model_to_eval = None
+
+        elif args.heterogeneity_type == 'combo_label_skew':
+            wandb.run.name = f"combo_label_skew_{args.topology}_agents_{args.num_agents}"
+
+            # 1. Get the label-skewed data for the agents (from 'label_skew_personalized')
+            agent_train_datasets, _ = split_train_test_data_personalized(
+                train_dataset=pretrain_dataloader.dataset,
+                test_dataset=test_loader_eval.dataset,
+                num_agents=args.num_agents,
+                non_iid_alpha=args.alpha
+            )
+            agent_train_dataloaders = [
+                DataLoader(ds, batch_size=args.batch_size, shuffle=True, num_workers=config.NUM_WORKERS, drop_last=True)
+                for ds in agent_train_datasets if len(ds) > 0
+            ]
+
+            # 2. Get a public dataloader for CIFAR10
+            # We need to create a small, shared IID dataset for alignment
+            # Note: This requires a new helper function. I will provide it below.
+            from custom_datasets import get_cifar10_public_dataloader
+            public_dataloader = get_cifar10_public_dataloader(
+                dataset=pretrain_dataloader.dataset,
+                batch_size=args.batch_size,
+                num_workers=config.NUM_WORKERS
+            )
+
+            # 3. Initialize models and run the combo_train logic
+            agent_backbones = [copy.deepcopy(global_model).to(device) for _ in range(args.num_agents)]
+            agent_classifiers = [nn.Linear(config.PROJECTION_INPUT_DIM, 10).to(device) for _ in
+                                 range(args.num_agents)]  # 10 classes for CIFAR10
+
+            final_backbones, final_classifiers = alignment_collaborative_training(
+                agent_backbones=agent_backbones,
+                agent_classifiers=agent_classifiers,
+                agent_train_dataloaders=agent_train_dataloaders,
+                global_test_loader=test_loader_eval,
+                public_dataloader=public_dataloader,
+                adj_matrix=adj_matrix,
+                vicreg_criterion=criterion,
+                classifier_criterion=nn.CrossEntropyLoss(),
+                device=device,
+                comm_rounds=args.comm_rounds,
+                local_epochs=args.local_epochs,
+                learning_rate=config.LEARNING_RATE,
+                eval_every=args.eval_every,
+                alignment_strength=args.alignment_strength,
+                alignment_only=args.alignment_only,
+                classifier_only=args.classifier_sharing_only
+            )
 
             final_combo_evaluation(
                 final_backbones=final_backbones,
