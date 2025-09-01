@@ -97,28 +97,28 @@ echo "Starting Python script..."
 #  --eval_every 5 \
 
 #Decentralized CIFAR10 Run
-#python main.py \
-#  --mode 'decentralized' \
-#  --dataset 'cifar10' \
-#  --heterogeneity_type 'combo_label_skew' \
-#  --topology 'fully_connected' \
-#  --num_agents 5 \
-#  --comm_rounds 200 \
-#  --local_epochs 1 \
-#  --eval_every 5 \
-#  --alpha 100 \
-#  --num_classes 10 \
-#  --alignment_strength 25
-
-#Federated for CIFAR10
 python main.py \
-  --mode 'federated' \
+  --mode 'decentralized' \
   --dataset 'cifar10' \
+  --heterogeneity_type 'combo_label_skew' \
+  --topology 'fully_connected' \
   --num_agents 5 \
-  --num_classes 10 \
   --comm_rounds 200 \
   --local_epochs 1 \
   --eval_every 5 \
-  --alpha 5
+  --alpha 100 \
+  --num_classes 10 \
+  --alignment_strength 25
+
+#Federated for CIFAR10
+#python main.py \
+#  --mode 'federated' \
+#  --dataset 'cifar10' \
+#  --num_agents 5 \
+#  --num_classes 10 \
+#  --comm_rounds 200 \
+#  --local_epochs 1 \
+#  --eval_every 5 \
+#  --alpha 5
 
 echo "Job finished at $(date)"
