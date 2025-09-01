@@ -101,12 +101,12 @@ python main.py \
   --mode 'decentralized' \
   --dataset 'cifar10' \
   --heterogeneity_type 'combo_label_skew' \
-  --topology 'fully_connected' \
+  --topology 'disconnected' \
   --num_agents 5 \
   --comm_rounds 200 \
   --local_epochs 1 \
   --eval_every 5 \
-  --alpha 5 \
+  --alpha 0.5 \
   --num_classes 10 \
   --alignment_strength 25
 
