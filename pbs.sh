@@ -107,6 +107,7 @@ python main.py \
   --local_epochs 1 \
   --eval_every 5 \
   --alpha 5 \
+  --num_classes 10 \
   --alignment_strength 25
 
 echo "Job finished at $(date)"
