@@ -79,36 +79,36 @@ echo "Starting Python script..."
 #  --alignment_strength 150
 
 #Centralized Run
-#python main.py \
-#  --mode 'centralized' \
-#  --dataset 'office_home' \
-#  --num_classes 10 \
-#  --epochs 200 \
-#  --eval_every 5 \
+python main.py \
+  --mode 'centralized' \
+  --dataset 'office_home' \
+  --num_classes 10 \
+  --epochs 200 \
+  --eval_every 5 \
 
 #Federated Run
 #python main.py \
 #  --mode 'federated' \
 #  --dataset 'office_home' \
-#  --num_agents 5 \
+#  --num_agents 4 \
 #  --num_classes 10 \
 #  --comm_rounds 200 \
 #  --local_epochs 1 \
 #  --eval_every 5 \
 
 #Decentralized CIFAR10 Run
-python main.py \
-  --mode 'decentralized' \
-  --dataset 'cifar10' \
-  --heterogeneity_type 'combo_label_skew' \
-  --topology 'disconnected' \
-  --num_agents 5 \
-  --comm_rounds 200 \
-  --local_epochs 1 \
-  --eval_every 5 \
-  --alpha 0.5 \
-  --num_classes 10 \
-  --alignment_strength 25
+#python main.py \
+#  --mode 'decentralized' \
+#  --dataset 'cifar10' \
+#  --heterogeneity_type 'combo_label_skew' \
+#  --topology 'disconnected' \
+#  --num_agents 5 \
+#  --comm_rounds 200 \
+#  --local_epochs 1 \
+#  --eval_every 5 \
+#  --alpha 0.5 \
+#  --num_classes 10 \
+#  --alignment_strength 25
 
 #Federated for CIFAR10
 #python main.py \
