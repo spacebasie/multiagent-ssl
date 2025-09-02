@@ -9,6 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import copy
 import wandb
+import numpy as np
 from training import get_consensus_model
 from network import gossip_average
 from evaluate import linear_evaluation, plot_tsne, calculate_representation_angles, plot_angle_evolution, knn_evaluation  # We can reuse this for the final eval
@@ -206,7 +207,16 @@ def alignment_collaborative_training(
             )
             if angles_this_round:
                 angle_history.append(angles_this_round)
+                median = np.median(angles_this_round)
+                q1 = np.percentile(angles_this_round, 25)
+                q3 = np.percentile(angles_this_round, 75)
 
+                # Log the statistics as individual metrics
+                wandb.log({
+                    "eval/angle_median": median,
+                    "eval/angle_25th_percentile": q1,
+                    "eval/angle_75th_percentile": q3
+                        }, step=round_num + 1)
             # --- NEW: After all rounds are complete, generate the final evolution plot ---
         plot_angle_evolution(angle_history, eval_every)
 
