@@ -26,7 +26,7 @@ centralized = pd.read_csv('simulations/centralized.csv')
 # federated_df.dropna(subset=['Step', 'eval/global_knn_accuracy'], inplace=True)
 # centralized_df.dropna(subset=['Step', 'eval/knn_accuracy'], inplace=True)
 
-plot = 'learning_curve' # 'global accuracy', 'angles', 'learning_curve'
+plot = 'angles' # 'global accuracy', 'angles', 'learning_curve'
 
 # --- Plotting ---
 if plot == 'global accuracy':
@@ -66,7 +66,7 @@ elif plot == 'angles':
     plt.plot(
         full_med['Step'],
         full_med['combo_domain_fully_connected_agents_4 - eval/angle_median'],
-        label='Fully Connected Median Angle Misalignment',
+        label='Fully Connected Angles',
         color='blue'
     )
     plt.scatter(
@@ -88,7 +88,7 @@ elif plot == 'angles':
     plt.plot(
         disc['Step'],
         disc['combo_domain_disconnected_agents_4 - eval/angle_median'],
-        label='Disconnected Median Angle Misalignment',
+        label='Disconnected Angles',
         color='red'
     )
 
@@ -111,7 +111,7 @@ elif plot == 'angles':
     plt.title('Angle Misalignment for Connected vs Disconnected Graphs')
     plt.xlabel('Communication Round')
     plt.ylabel('Angle (deg)')
-    plt.legend()  # Display the labels
+    plt.legend(loc='upper left')  # Display the labels
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.ylim(15, 50)
     plt.tight_layout()
