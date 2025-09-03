@@ -65,26 +65,26 @@ echo "Starting Python script..."
 #    --local_epochs 1
 
 #For combo train
-python main.py \
-  --mode 'decentralized' \
-  --dataset 'office_home' \
-  --heterogeneity_type 'combo_domain' \
-  --topology 'fully_connected' \
-  --num_agents 4 \
-  --num_classes 10 \
-  --comm_rounds 200 \
-  --alpha 100 \
-  --local_epochs 1 \
-  --eval_every 5 \
-  --alignment_strength 25
+#python main.py \
+#  --mode 'decentralized' \
+#  --dataset 'office_home' \
+#  --heterogeneity_type 'combo_domain' \
+#  --topology 'fully_connected' \
+#  --num_agents 4 \
+#  --num_classes 10 \
+#  --comm_rounds 200 \
+#  --alpha 100 \
+#  --local_epochs 1 \
+#  --eval_every 5 \
+#  --alignment_strength 25
 
 #Centralized Run
-#python main.py \
-#  --mode 'centralized' \
-#  --dataset 'office_home' \
-#  --num_classes 10 \
-#  --epochs 200 \
-#  --eval_every 5 \
+python main.py \
+  --mode 'centralized' \
+  --dataset 'office_home' \
+  --num_classes 10 \
+  --epochs 200 \
+  --eval_every 5 \
 
 #Federated Run
 #python main.py \
