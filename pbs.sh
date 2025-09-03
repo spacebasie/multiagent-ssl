@@ -31,7 +31,7 @@ module load Python/3.10.4-GCCcore-11.3.0
 
 # Activate your specific Python virtual environment.
 echo "Activating virtual environment..."
-source ~/venv/venv25/bin/activate
+source /rds/general/user/saf24/home/venv/venv25/bin/activate
 
 # These arguments will override the defaults in config.py.
 echo "Starting Python script..."
