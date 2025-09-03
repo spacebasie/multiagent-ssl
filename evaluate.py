@@ -13,6 +13,7 @@ from sklearn.decomposition import PCA
 import numpy as np
 import matplotlib.pyplot as plt
 from itertools import combinations
+import pandas as pd
 
 
 def linear_evaluation(model, proj_output_dim, train_loader, test_loader, epochs, device, agent_id=None):
@@ -90,9 +91,15 @@ def knn_evaluation(model, train_loader, test_loader, device, k=20, temperature=0
     return accuracy
 
 
-def plot_tsne(model, test_loader, device, plot_title="t-SNE Visualization", save_html_path=None):
+# In evaluate.py
+
+# Add this import at the top of the file if it's not there
+import pandas as pd
+
+
+def plot_tsne(model, test_loader, device, plot_title="t-SNE Visualization", save_csv_path=None):
     """
-    Generates and logs a t-SNE plot to W&B and optionally saves an interactive HTML version.
+    Generates and logs a t-SNE plot to W&B and optionally saves the data to a CSV.
     """
     print(f"\n--- Generating and logging '{plot_title}' to W&B ---")
     model.eval()
@@ -112,23 +119,38 @@ def plot_tsne(model, test_loader, device, plot_title="t-SNE Visualization", save
 
     if not np.isfinite(all_features).all():
         print(f"Warning: Skipping '{plot_title}' because the model produced NaN/Inf features.")
-        # We return here to avoid crashing, allowing the rest of the script to run.
         return
 
-    if len(all_features) > 2000:
-        print("Dataset is large, using a random subset of 2000 points for t-SNE.")
-        indices = np.random.choice(len(all_features), 2000, replace=False)
-        all_features = all_features[indices]
-        all_labels = all_labels[indices]
+    subset_size = 2000
+    if len(all_features) > subset_size:
+        print(f"Dataset is large, using a random subset of {subset_size} points for t-SNE.")
+        indices = np.random.choice(len(all_features), subset_size, replace=False)
+        features_subset = all_features[indices]
+        labels_subset = all_labels[indices]
+    else:
+        features_subset = all_features
+        labels_subset = all_labels
 
     print("Running t-SNE...")
-    tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(all_features) - 1), max_iter=1000)
-    tsne_results = tsne.fit_transform(all_features)
+    tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(features_subset) - 1))
+    tsne_results = tsne.fit_transform(features_subset)
     print("t-SNE finished.")
 
-    # 3. Create the plot
+    # --- NEW: Save data to CSV if a path is provided ---
+    if save_csv_path:
+        print(f"Saving t-SNE data to {save_csv_path}...")
+        df = pd.DataFrame({
+            'tsne_dim_1': tsne_results[:, 0],
+            'tsne_dim_2': tsne_results[:, 1],
+            'label': labels_subset
+        })
+        df.to_csv(save_csv_path, index=False)
+        print("Data saved successfully.")
+    # --- END NEW ---
+
+    # Plotting logic remains the same...
     fig, ax = plt.subplots(figsize=(12, 10))
-    scatter = ax.scatter(tsne_results[:, 0], tsne_results[:, 1], c=all_labels, cmap='viridis', alpha=0.7)
+    scatter = ax.scatter(tsne_results[:, 0], tsne_results[:, 1], c=labels_subset, cmap='viridis', alpha=0.7)
 
     class_names = None
     dataset = test_loader.dataset
@@ -142,8 +164,9 @@ def plot_tsne(model, test_loader, device, plot_title="t-SNE Visualization", save
 
     if class_names:
         legend_elements = scatter.legend_elements()
-        num_legend_entries = len(legend_elements[0])
-        ax.legend(legend_elements[0], class_names[:num_legend_entries], title="Classes")
+        unique_labels_in_subset = np.unique(labels_subset)
+        legend_class_names = [class_names[i] for i in sorted(unique_labels_in_subset) if i < len(class_names)]
+        ax.legend(legend_elements[0][:len(legend_class_names)], legend_class_names, title="Classes")
     else:
         ax.legend(*scatter.legend_elements(), title="Classes")
 
@@ -151,25 +174,7 @@ def plot_tsne(model, test_loader, device, plot_title="t-SNE Visualization", save
     ax.set_xlabel('t-SNE Dimension 1')
     ax.set_ylabel('t-SNE Dimension 2')
     ax.grid(True)
-
-    # --- START: New additions ---
-    # 1. Fix the layout to prevent the legend from being cut off
     fig.tight_layout()
-
-    # 2. Optionally save an interactive HTML version of the plot
-    if save_html_path:
-        try:
-            from wandb import util
-            import plotly.io as pio
-
-            print(f"Converting plot to interactive HTML...")
-            plotly_fig = util.matplotlib_to_plotly(fig)
-            pio.write_html(plotly_fig, file=save_html_path)
-            print(f"Interactive plot saved to {save_html_path}")
-        except ImportError:
-            print(
-                "Warning: Could not save interactive plot. Please ensure 'plotly' is installed (`pip install plotly`).")
-    # --- END: New additions ---
 
     wandb.log({plot_title: fig})
     print(f"'{plot_title}' logged to W&B.")

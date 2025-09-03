@@ -277,9 +277,11 @@ def final_combo_evaluation(
 
     print("\n--- Generating Final t-SNE Visualizations ---")
     for i, backbone in enumerate(final_backbones):
+        csv_filename = f"tsne_data_agent_{i}.csv"
         plot_tsne(
             model=backbone,
             test_loader=global_test_loader,
             device=device,
-            plot_title=f"Final t-SNE for Agent {i}'s Backbone"
+            plot_title=f"Final t-SNE for Agent {i}'s Backbone",
+            save_csv_path=csv_filename
         )
