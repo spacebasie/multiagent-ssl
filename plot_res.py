@@ -31,6 +31,17 @@ fed_alpha05 = pd.read_csv('simulations/fed_alpha05.csv')
 fed_alpha5 = pd.read_csv('simulations/fed_alpha5.csv')
 fed_alpha100 = pd.read_csv('simulations/fed_alpha100.csv')
 
+lsp15fully = pd.read_csv('simulations/lsp15fully.csv')
+lsp15disc = pd.read_csv('simulations/lsp15disc.csv')
+lsp15rand = pd.read_csv('simulations/lsp15rand.csv')
+
+lsp10fully = pd.read_csv('simulations/lsp10fully.csv')
+lsp10disc = pd.read_csv('simulations/lsp10disc.csv')
+lsp10rand = pd.read_csv('simulations/lsp10rand.csv')
+
+lsp5fully = pd.read_csv('simulations/lsp5fully.csv')
+lsp5disc = pd.read_csv('simulations/lsp5disc.csv')
+lsp5rand = pd.read_csv('simulations/lsp5rand.csv')
 
 # --- Data Cleaning (Important!) ---
 # The downloaded CSV might contain non-numeric values (e.g., "NaN") for steps
@@ -38,7 +49,7 @@ fed_alpha100 = pd.read_csv('simulations/fed_alpha100.csv')
 # federated_df.dropna(subset=['Step', 'eval/global_knn_accuracy'], inplace=True)
 # centralized_df.dropna(subset=['Step', 'eval/knn_accuracy'], inplace=True)
 
-plot = 'fed_het' # 'global accuracy', 'angles', 'learning_curve', 'tsne', 'loss_terms'
+plot = 'lsp' # 'global accuracy', 'angles', 'learning_curve', 'tsne', 'loss_terms', lsp
 
 # --- Plotting ---
 if plot == 'global accuracy':
@@ -318,4 +329,87 @@ elif plot == 'fed_het':
     plt.ylim(45, 70)
     plt.tight_layout()
     plt.savefig("figures/fed_het.pdf")
+    plt.show()
+
+elif plot == 'lsp':
+    plt.figure(figsize=(10, 6.5))
+
+    plt.plot(
+        lsp5fully['Step'],
+        lsp5fully['decentralized_fully_connected_agents_5_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        label='5 Agents Fully Connected',
+        color='blue'
+    )
+
+    plt.plot(
+        lsp5disc['Step'],
+        lsp5disc['decentralized_disconnected_agents_5_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        label='5 Agents Disconnected',
+        color='orange'
+    )
+
+    plt.plot(
+        lsp5rand['Step'],
+        lsp5rand['decentralized_random_agents_5_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        label='5 Agents Random',
+        color='green'
+    )
+
+    plt.plot(
+        lsp10fully['Step'],
+        lsp10fully['decentralized_fully_connected_agents_10_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        label='10 Agents Fully Connected',
+        color='blue',
+        linestyle='--'
+    )
+
+    plt.plot(
+        lsp10disc['Step'],
+        lsp10disc['decentralized_disconnected_agents_10_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        label='10 Agents Disconnected',
+        color='orange',
+        linestyle='--'
+    )
+
+    plt.plot(
+        lsp10rand['Step'],
+        lsp10rand['decentralized_random_agents_10_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        label='10 Agents Random',
+        color='green',
+        linestyle='--'
+    )
+
+    plt.plot(
+        lsp15fully['Step'],
+        lsp15fully['decentralized_fully_connected_agents_15_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        label='15 Agents Fully Connected',
+        color='blue',
+        linestyle=':'
+    )
+
+    plt.plot(
+        lsp15disc['Step'],
+        lsp15disc['decentralized_disconnected_agents_15_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        label='15 Agents Disconnected',
+        color='orange',
+        linestyle=':'
+    )
+
+    plt.plot(
+        lsp15rand['Step'],
+        lsp15rand['decentralized_random_agents_15_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        label='15 Agents Random',
+        color='green',
+        linestyle=':'
+    )
+
+    plt.title('P2P For Different Graphs', fontsize=16)
+    plt.xlabel('Step', fontsize=14)
+    plt.ylabel('k-NN Accuracy (%)', fontsize=14)
+    plt.legend(fontsize=10, loc='lower right')
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.ylim(40, 75)
+    plt.xlim(0, 200)
+    plt.tight_layout()
+    plt.savefig("figures/lsp_het.pdf")
     plt.show()
