@@ -56,7 +56,7 @@ python main.py \
     --dataset 'cifar10' \
     --heterogeneity_type 'label_skew_personalized' \
     --topology 'fully_connected' \
-    --alpha 100 \
+    --alpha 5 \
     --eval_every 5 \
     --num_classes 10 \
     --comm_rounds 200 \
