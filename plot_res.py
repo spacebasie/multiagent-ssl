@@ -1,5 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+
 
 # Load the data from the two CSV files
 federated_df = pd.read_csv('simulations/fed_val.csv')
@@ -20,13 +22,23 @@ alignment = pd.read_csv('simulations/alignment.csv')
 federated = pd.read_csv('simulations/federated.csv')
 centralized = pd.read_csv('simulations/centralized.csv')
 
+inv = pd.read_csv('simulations/inv.csv')
+var = pd.read_csv('simulations/var.csv')
+cov = pd.read_csv('simulations/cov.csv')
+train_loss = pd.read_csv('simulations/train_loss.csv')
+
+fed_alpha05 = pd.read_csv('simulations/fed_alpha05.csv')
+fed_alpha5 = pd.read_csv('simulations/fed_alpha5.csv')
+fed_alpha100 = pd.read_csv('simulations/fed_alpha100.csv')
+
+
 # --- Data Cleaning (Important!) ---
 # The downloaded CSV might contain non-numeric values (e.g., "NaN") for steps
 # where a metric wasn't logged. We'll drop those rows to ensure clean plotting.
 # federated_df.dropna(subset=['Step', 'eval/global_knn_accuracy'], inplace=True)
 # centralized_df.dropna(subset=['Step', 'eval/knn_accuracy'], inplace=True)
 
-plot = 'angles' # 'global accuracy', 'angles', 'learning_curve'
+plot = 'fed_het' # 'global accuracy', 'angles', 'learning_curve', 'tsne', 'loss_terms'
 
 # --- Plotting ---
 if plot == 'global accuracy':
@@ -56,6 +68,7 @@ if plot == 'global accuracy':
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.ylim(40, 80)
     plt.tight_layout()
+    plt.savefig('figures/fed_vs_centr.pdf')
 
     # Save the figure or display it
     plt.show()
@@ -108,73 +121,201 @@ elif plot == 'angles':
         marker='x'
     )
 
-    plt.title('Angle Misalignment for Connected vs Disconnected Graphs')
+    legend_handles = [
+        Line2D([0], [0], color='blue', lw=3, label=r'$\bf{Fully\ Connected\ Angles}$'),  # bold label
+        Line2D([0], [0], color='red', lw=3, label='Disconnected Angles')
+    ]
+
+    plt.title('Angle Misalignment for Connected vs Disconnected Graphs', fontsize=20)
     plt.xlabel('Communication Round')
     plt.ylabel('Angle (deg)')
-    plt.legend(loc='upper left')  # Display the labels
+    plt.legend(loc='upper left', handles=legend_handles, fontsize=16)  # Display the labels
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.ylim(15, 50)
     plt.tight_layout()
-
+    plt.savefig("angles.pdf")  # vector, infinitely scalable
     plt.show()
 
 elif plot == 'learning_curve':
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(10, 7))
 
+    # Plot lines (normal thickness)
     plt.plot(
         fully_con['Step'],
         fully_con['combo_domain_fully_connected_agents_4 - eval/avg_combo_accuracy'],
-        label='Our Method',
         color='blue'
     )
 
     plt.plot(
         random['Step'],
         random['combo_domain_random_agents_4 - eval/avg_combo_accuracy'],
-        label='Random',
         color='green'
     )
 
     plt.plot(
         discon['Step'],
         discon['combo_domain_disconnected_agents_4 - eval/avg_combo_accuracy'],
-        label='Disconnected',
         color='red'
     )
 
     plt.plot(
         classifieronly['Step'],
         classifieronly['combo_domain_fully_connected_agents_4 - eval/avg_combo_accuracy'],
-        label='Classifier Only',
         color='orange'
     )
 
     plt.plot(
         alignment['Step'],
         alignment['combo_domain_fully_connected_agents_4 - eval/avg_combo_accuracy'],
-        label='Alignment Only',
         color='purple'
     )
 
     plt.plot(
         federated['Step'],
         federated['federated_agents_4_dataset_office_home - eval/global_knn_accuracy'],
-        label='Federated',
         color='sandybrown'
     )
 
     plt.plot(
         centralized['Step'],
         centralized['centralized_office_home_epochs_200 - eval/knn_accuracy'],
-        label='Centralized',
         color='skyblue'
     )
 
-    plt.title('Learning Curves for Different Architectures')
+    # Create custom legend handles with slightly thicker lines
+    legend_handles = [
+        Line2D([0], [0], color='blue', lw=3, label=r'$\bf{Our\ Method}$'),  # bold label
+        Line2D([0], [0], color='green', lw=3, label='Random'),
+        Line2D([0], [0], color='red', lw=3, label='Disconnected'),
+        Line2D([0], [0], color='orange', lw=3, label='Classifier Only'),
+        Line2D([0], [0], color='purple', lw=3, label='Alignment Only'),
+        Line2D([0], [0], color='sandybrown', lw=3, label='Federated'),
+        Line2D([0], [0], color='skyblue', lw=3, label='Centralized'),
+    ]
+
+    plt.title('Learning Curves for Different Architectures', fontsize=20)
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy (%)')
-    plt.legend()  # Display the labels
+
+    # Use the custom handles for the legend with increased font size
+    plt.legend(handles=legend_handles, fontsize=16)
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.ylim(20, 70)
     plt.tight_layout()
+    plt.savefig("figure.pdf")  # vector, infinitely scalable
+    plt.show()
+
+elif plot == 'tsne':
+    plt.figure(figsize=(11, 6))
+
+    tsne_df = pd.read_csv('simulations/tsne.csv', header=1)
+    class_labels = {
+        0: 'Clipart', 1: 'Product', 2: 'Alarm Clock',
+        3: 'Alarm Clock', 4: 'Backpack', 5: 'Batteries', 6: 'Bed',
+        7: 'Bike', 8: 'Bottle', 9: 'Bucket'
+    }
+    colors = plt.cm.get_cmap('tab10', 10)
+
+    # Create the scatter plot
+    for class_id, class_name in class_labels.items():
+        # Filter data for the current class
+        class_data = tsne_df[tsne_df['label'] == class_id]
+        if not class_data.empty:
+            plt.scatter(
+                class_data['tsne_dim_1'],
+                class_data['tsne_dim_2'],
+                label=class_name,
+                color=colors(class_id),
+                alpha=0.8,
+                s=40
+            )
+
+    plt.title('t-SNE Visualization of Feature Embeddings', fontsize=20)
+    plt.xlabel('t-SNE Dimension 1', fontsize=14)
+    plt.ylabel('t-SNE Dimension 2', fontsize=14)
+
+    # Place legend outside the plot area for clarity
+    # plt.legend(title='Classes', loc='lower right', fontsize=12)
+
+    # Use a specific tight_layout to make space for the external legend
+    # plt.tight_layout(rect=[0, 0, 0.85, 1])
+
+# Add a grid for all plot types
+    plt.grid(True)
+    plt.savefig("tsne.pdf")
+# Adjust layout for plots other than tsne, which has its own layout adjustment
+    plt.tight_layout()
+    plt.show()
+
+elif plot == 'loss_terms':
+    plt.figure(figsize=(10, 6))
+
+    # plt.plot(
+    #     train_loss['Step'],
+    #     train_loss['centralized_office_home_epochs_200 - train/loss'],
+    #     label='Training Loss',
+    #     color='blue'
+    # )
+
+    plt.plot(
+        inv['Step'],
+        inv['centralized_office_home_epochs_200 - train/invariance_loss'],
+        label='Invariance Loss',
+        color='orange'
+    )
+
+    plt.plot(
+        var['Step'],
+        var['centralized_office_home_epochs_200 - train/variance_loss'],
+        label='Variance Loss',
+        color='green'
+    )
+
+    plt.plot(
+        cov['Step'],
+        cov['centralized_office_home_epochs_200 - train/covariance_loss'],
+        label='Covariance Loss',
+        color='red'
+    )
+
+    plt.title('Training Loss Components Over Time', fontsize=20)
+    plt.xlabel('Step', fontsize=14)
+    plt.ylabel('Loss Value', fontsize=14)
+    plt.legend(fontsize=12, loc='upper left')
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.ylim(0, 3.5)
+    plt.tight_layout()
+    plt.savefig("figures/loss_terms.pdf")
+    plt.show()
+
+elif plot == 'fed_het':
+    plt.plot(
+        fed_alpha05['Step'],
+        fed_alpha05['federated_agents_5_dataset_cifar10 - eval/knn_accuracy'],
+        label=r'$\alpha=0.5$',
+        color='blue'
+    )
+
+    plt.plot(
+        fed_alpha5['Step'],
+        fed_alpha5['federated_agents_5_dataset_cifar10 - eval/knn_accuracy'],
+        label=r'$\alpha=5$',
+        color='orange'
+    )
+
+    plt.plot(
+        fed_alpha100['Step'],
+        fed_alpha100['federated_agents_5_dataset_cifar10 - eval/global_knn_accuracy'],
+        label=r'$\alpha=100$',
+        color='green'
+    )
+
+    plt.title('Federated Learning with Varying Data Heterogeneity', fontsize=16)
+    plt.xlabel('Step', fontsize=14)
+    plt.ylabel('k-NN Accuracy (%)', fontsize=14)
+    plt.legend(fontsize=12, loc='upper left')
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.ylim(45, 70)
+    plt.tight_layout()
+    plt.savefig("figures/fed_het.pdf")
     plt.show()

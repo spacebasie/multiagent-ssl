@@ -35,10 +35,9 @@ source /rds/general/user/saf24/home/venv/venv25/bin/activate
 
 # These arguments will override the defaults in config.py.
 echo "Starting Python script..."
-# For office_hierarchical
 # python main.py \
 #    --mode 'decentralized' \
-#    --dataset 'office_home' \
+#    --dataset 'cifar10' \
 #    --heterogeneity_type 'office_hierarchical' \
 #    --topology 'random' \
 #    --num_neighborhoods 2 \
@@ -52,17 +51,17 @@ echo "Starting Python script..."
 #REMEMBER TO CHECK THE LEARNING RATE!
 
 #For cifar10
-#python main.py \
-#    --mode 'decentralized' \
-#    --dataset 'cifar10' \
-#    --heterogeneity_type 'label_skew_personalized' \
-#    --topology 'fully_connected' \
-#    --alpha 0.5 \
-#    --eval_every 5 \
-#    --num_classes 10 \
-#    --comm_rounds 200 \
-#    --num_agents 5 \
-#    --local_epochs 1
+python main.py \
+    --mode 'decentralized' \
+    --dataset 'cifar10' \
+    --heterogeneity_type 'label_skew_personalized' \
+    --topology 'fully_connected' \
+    --alpha 5 \
+    --eval_every 5 \
+    --num_classes 10 \
+    --comm_rounds 200 \
+    --num_agents 5 \
+    --local_epochs 1
 
 #For combo train
 #python main.py \
@@ -79,12 +78,12 @@ echo "Starting Python script..."
 #  --alignment_strength 25
 
 #Centralized Run
-python main.py \
-  --mode 'centralized' \
-  --dataset 'office_home' \
-  --num_classes 10 \
-  --epochs 200 \
-  --eval_every 5 \
+#python main.py \
+#  --mode 'centralized' \
+#  --dataset 'office_home' \
+#  --num_classes 10 \
+#  --epochs 200 \
+#  --eval_every 5 \
 
 #Federated Run
 #python main.py \
