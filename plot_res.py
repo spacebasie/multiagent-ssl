@@ -43,13 +43,16 @@ lsp5fully = pd.read_csv('simulations/lsp5fully.csv')
 lsp5disc = pd.read_csv('simulations/lsp5disc.csv')
 lsp5rand = pd.read_csv('simulations/lsp5rand.csv')
 
+ds_rand = pd.read_csv('simulations/ds_rand.csv')
+ds_disc = pd.read_csv('simulations/ds_disc.csv')
+
 # --- Data Cleaning (Important!) ---
 # The downloaded CSV might contain non-numeric values (e.g., "NaN") for steps
 # where a metric wasn't logged. We'll drop those rows to ensure clean plotting.
 # federated_df.dropna(subset=['Step', 'eval/global_knn_accuracy'], inplace=True)
 # centralized_df.dropna(subset=['Step', 'eval/knn_accuracy'], inplace=True)
 
-plot = 'lsp' # 'global accuracy', 'angles', 'learning_curve', 'tsne', 'loss_terms', lsp
+plot = 'ds' # 'global accuracy', 'angles', 'learning_curve', 'tsne', 'loss_terms', lsp
 
 # --- Plotting ---
 if plot == 'global accuracy':
@@ -412,4 +415,31 @@ elif plot == 'lsp':
     plt.xlim(0, 200)
     plt.tight_layout()
     plt.savefig("figures/lsp_het.pdf")
+    plt.show()
+
+elif plot == 'ds':
+    plt.figure(figsize=(10, 6))
+
+    plt.plot(
+        ds_rand['Step'],
+        ds_rand['decentralized_random_agents_5_alpha_100.0 - eval/avg_personalized_accuracy'],
+        label='Random Graph',
+        color='blue'
+    )
+    plt.plot(
+        ds_disc['Step'],
+        ds_disc['decentralized_disconnected_agents_5_alpha_100.0 - eval/avg_personalized_accuracy'],
+        label='Disconnected Graph',
+        color='orange'
+    )
+
+    plt.title('Communication Impact with Domain Shift', fontsize=16)
+    plt.xlabel('Step', fontsize=14)
+    plt.ylabel('k-NN Accuracy (%)', fontsize=14)
+    plt.legend(fontsize=12, loc='lower right')
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.ylim(30, 50)
+    plt.xlim(0, 200)
+    plt.tight_layout()
+    plt.savefig("figures/ds.pdf")
     plt.show()
