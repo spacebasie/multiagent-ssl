@@ -46,13 +46,21 @@ lsp5rand = pd.read_csv('simulations/lsp5rand.csv')
 ds_rand = pd.read_csv('simulations/ds_rand.csv')
 ds_disc = pd.read_csv('simulations/ds_disc.csv')
 
+ali_1 = pd.read_csv('simulations/ali_1.csv')
+ali_5 = pd.read_csv('simulations/ali_5.csv')
+ali_25 = pd.read_csv('simulations/ali_25.csv')
+ali_50 = pd.read_csv('simulations/ali_50.csv')
+ali_100 = pd.read_csv('simulations/ali_100.csv')
+ali_125 = pd.read_csv('simulations/ali_125.csv')
+ali_150 = pd.read_csv('simulations/ali_150.csv')
+
 # --- Data Cleaning (Important!) ---
 # The downloaded CSV might contain non-numeric values (e.g., "NaN") for steps
 # where a metric wasn't logged. We'll drop those rows to ensure clean plotting.
 # federated_df.dropna(subset=['Step', 'eval/global_knn_accuracy'], inplace=True)
 # centralized_df.dropna(subset=['Step', 'eval/knn_accuracy'], inplace=True)
 
-plot = 'ds' # 'global accuracy', 'angles', 'learning_curve', 'tsne', 'loss_terms', lsp
+plot = 'align' # 'global accuracy', 'angles', 'learning_curve', 'tsne', 'loss_terms', lsp
 
 # --- Plotting ---
 if plot == 'global accuracy':
@@ -184,17 +192,17 @@ elif plot == 'learning_curve':
         color='purple'
     )
 
-    plt.plot(
-        federated['Step'],
-        federated['federated_agents_4_dataset_office_home - eval/global_knn_accuracy'],
-        color='sandybrown'
-    )
-
-    plt.plot(
-        centralized['Step'],
-        centralized['centralized_office_home_epochs_200 - eval/knn_accuracy'],
-        color='skyblue'
-    )
+    # plt.plot(
+    #     federated['Step'],
+    #     federated['federated_agents_4_dataset_office_home - eval/global_knn_accuracy'],
+    #     color='sandybrown'
+    # )
+    #
+    # plt.plot(
+    #     centralized['Step'],
+    #     centralized['centralized_office_home_epochs_200 - eval/knn_accuracy'],
+    #     color='skyblue'
+    # )
 
     # Create custom legend handles with slightly thicker lines
     legend_handles = [
@@ -203,26 +211,26 @@ elif plot == 'learning_curve':
         Line2D([0], [0], color='red', lw=3, label='Disconnected'),
         Line2D([0], [0], color='orange', lw=3, label='Classifier Only'),
         Line2D([0], [0], color='purple', lw=3, label='Alignment Only'),
-        Line2D([0], [0], color='sandybrown', lw=3, label='Federated'),
-        Line2D([0], [0], color='skyblue', lw=3, label='Centralized'),
+        # Line2D([0], [0], color='sandybrown', lw=3, label='Federated'),
+        # Line2D([0], [0], color='skyblue', lw=3, label='Centralized'),
     ]
 
-    plt.title('Learning Curves for Different Architectures', fontsize=20)
+    plt.title('Learning Curves with Our Method', fontsize=20)
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy (%)')
 
     # Use the custom handles for the legend with increased font size
     plt.legend(handles=legend_handles, fontsize=16)
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
-    plt.ylim(20, 70)
+    plt.ylim(20, 65)
     plt.tight_layout()
-    plt.savefig("figure.pdf")  # vector, infinitely scalable
+    plt.savefig("ablation_learningcurve.pdf")  # vector, infinitely scalable
     plt.show()
 
 elif plot == 'tsne':
     plt.figure(figsize=(11, 6))
 
-    tsne_df = pd.read_csv('simulations/tsne.csv', header=1)
+    tsne_df = pd.read_csv('simulations/tsne_data_agent_2.csv', header=1)
     class_labels = {
         0: 'Clipart', 1: 'Product', 2: 'Alarm Clock',
         3: 'Alarm Clock', 4: 'Backpack', 5: 'Batteries', 6: 'Bed',
@@ -244,7 +252,7 @@ elif plot == 'tsne':
                 s=40
             )
 
-    plt.title('t-SNE Visualization of Feature Embeddings', fontsize=20)
+    plt.title('t-SNE Feature Embeddings for Disconnected', fontsize=20)
     plt.xlabel('t-SNE Dimension 1', fontsize=14)
     plt.ylabel('t-SNE Dimension 2', fontsize=14)
 
@@ -443,3 +451,67 @@ elif plot == 'ds':
     plt.tight_layout()
     plt.savefig("figures/ds.pdf")
     plt.show()
+
+elif plot == 'align':
+    plt.figure(figsize=(10, 6))
+
+    plt.plot(
+        ali_1['Step'],
+        ali_1['combo_domain_fully_connected_agents_4 - eval/avg_combo_accuracy'],
+        label=r'$\lambda=1$',
+        color='green'
+    )
+
+    plt.plot(
+        ali_5['Step'],
+        ali_5['combo_domain_fully_connected_agents_4 - eval/avg_combo_accuracy'],
+        label=r'$\lambda=5$',
+        color='orange'
+    )
+
+    plt.plot(
+        ali_25['Step'],
+        ali_25['combo_domain_fully_connected_agents_4 - eval/avg_combo_accuracy'],
+        label=r'$\lambda=25$',
+        color='blue'
+    )
+
+    plt.plot(
+        ali_50['Step'],
+        ali_50['combo_domain_fully_connected_agents_4 - eval/avg_combo_accuracy'],
+        label=r'$\lambda=50$',
+        color='red'
+    )
+
+    plt.plot(
+        ali_100['Step'],
+        ali_100['combo_domain_fully_connected_agents_4 - eval/avg_combo_accuracy'],
+        label=r'$\lambda=100$',
+        color='purple'
+    )
+
+    plt.plot(
+        ali_125['Step'],
+        ali_125['combo_domain_fully_connected_agents_4 - eval/avg_combo_accuracy'],
+        label=r'$\lambda=125$',
+        color='brown'
+    )
+
+    plt.plot(
+        ali_150['Step'],
+        ali_150['combo_domain_fully_connected_agents_4 - eval/avg_combo_accuracy'],
+        label=r'$\lambda=150$',
+        color='pink'
+    )
+
+    plt.title('Effect of Alignment Strength on Performance', fontsize=16)
+    plt.xlabel('Step', fontsize=14)
+    plt.ylabel('Accuracy (%)', fontsize=14)
+    plt.legend(fontsize=12, loc='lower right')
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.ylim(20, 60)
+    plt.xlim(5, 75)
+    plt.tight_layout()
+    plt.savefig("figures/align.pdf")
+    plt.show()
+

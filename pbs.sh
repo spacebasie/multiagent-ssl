@@ -14,7 +14,7 @@
 # Set the maximum walltime for the job (e.g., 4 hours).
 # The job will be terminated if it runs longer than this.
 # Adjust this based on how long you expect your experiment to run.
-#PBS -l walltime=08:00:00
+#PBS -l walltime=04:00:00
 
 # --- Job Execution ---
 
@@ -55,12 +55,12 @@ python main.py \
     --mode 'decentralized' \
     --dataset 'cifar10' \
     --heterogeneity_type 'label_skew_personalized' \
-    --topology 'random' \
+    --topology 'fully_connected' \
     --alpha 0.5 \
     --eval_every 5 \
     --num_classes 10 \
     --comm_rounds 200 \
-    --num_agents 10 \
+    --num_agents 5 \
     --local_epochs 1
 
 #For combo train
