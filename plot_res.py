@@ -54,13 +54,22 @@ ali_100 = pd.read_csv('simulations/ali_100.csv')
 ali_125 = pd.read_csv('simulations/ali_125.csv')
 ali_150 = pd.read_csv('simulations/ali_150.csv')
 
+method_lsp05 = pd.read_csv('simulations/method_lsp05.csv')
+method_lsp5 = pd.read_csv('simulations/method_lsp5.csv')
+method_lsp100 = pd.read_csv('simulations/method_lsp100.csv')
+method_lsp05disc = pd.read_csv('simulations/method_lsp05disc.csv')
+
+lsp_05 = pd.read_csv('simulations/lsp_05.csv')
+lsp_5 = pd.read_csv('simulations/lsp_5.csv')
+lsp_100 = pd.read_csv('simulations/lsp_100.csv')
+
 # --- Data Cleaning (Important!) ---
 # The downloaded CSV might contain non-numeric values (e.g., "NaN") for steps
 # where a metric wasn't logged. We'll drop those rows to ensure clean plotting.
 # federated_df.dropna(subset=['Step', 'eval/global_knn_accuracy'], inplace=True)
 # centralized_df.dropna(subset=['Step', 'eval/knn_accuracy'], inplace=True)
 
-plot = 'align' # 'global accuracy', 'angles', 'learning_curve', 'tsne', 'loss_terms', lsp
+plot = 'lsp_alpha' # 'global accuracy', 'angles', 'learning_curve', 'tsne', 'loss_terms', lsp, method_lsp, lsp_alpha
 
 # --- Plotting ---
 if plot == 'global accuracy':
@@ -515,3 +524,79 @@ elif plot == 'align':
     plt.savefig("figures/align.pdf")
     plt.show()
 
+elif plot == 'method_lsp':
+    plt.figure(figsize=(10, 6))
+
+    plt.plot(
+        method_lsp05['Step'],
+        method_lsp05['combo_label_skew_fully_connected_agents_5 - eval/avg_combo_accuracy'],
+        label=r'$\alpha=0.5$',
+        color='blue'
+    )
+
+    plt.plot(
+        method_lsp5['Step'],
+        method_lsp5['combo_label_skew_fully_connected_agents_5 - eval/avg_combo_accuracy'],
+        label=r'$\alpha=5$',
+        color='orange'
+    )
+
+    plt.plot(
+        method_lsp100['Step'],
+        method_lsp100['combo_label_skew_fully_connected_agents_5 - eval/avg_combo_accuracy'],
+        label=r'$\alpha=100$',
+        color='green'
+    )
+
+    plt.plot(
+        method_lsp05disc['Step'],
+        method_lsp05disc['combo_label_skew_disconnected_agents_5 - eval/avg_combo_accuracy'],
+        label=r'$\alpha=0.5$ Disconnected',
+        color='red'
+    )
+
+    plt.title('Effect of Heterogeneity on Our Method', fontsize=16)
+    plt.xlabel('Step', fontsize=14)
+    plt.ylabel('Accuracy (%)', fontsize=14)
+    plt.legend(fontsize=12, loc='lower right')
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.ylim(15, 60)
+    plt.xlim(5, 200)
+    plt.tight_layout()
+    plt.savefig("figures/method_lsp.pdf")
+    plt.show()
+
+elif plot == 'lsp_alpha':
+    plt.figure(figsize=(10, 6))
+
+    plt.plot(
+        lsp_05['Step'],
+        lsp_05['decentralized_fully_connected_agents_5_hetero_label_skew_personalized - eval/avg_global_accuracy'],
+        label=r'$\alpha=0.5$',
+        color='blue'
+    )
+
+    plt.plot(
+        lsp_5['Step'],
+        lsp_5['decentralized_fully_connected_agents_5_hetero_label_skew_personalized - eval/avg_global_accuracy'],
+        label=r'$\alpha=5$',
+        color='orange'
+    )
+
+    plt.plot(
+        lsp_100['Step'],
+        lsp_100['decentralized_fully_connected_agents_5_hetero_label_skew_personalized - eval/avg_global_accuracy'],
+        label=r'$\alpha=100$',
+        color='green'
+    )
+
+    plt.title('Effect of Data Heterogeneity on Naive Performance', fontsize=16)
+    plt.xlabel('Step', fontsize=14)
+    plt.ylabel('k-NN Accuracy (%)', fontsize=14)
+    plt.legend(fontsize=12, loc='lower right')
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.ylim(40, 65)
+    plt.xlim(5, 200)
+    plt.tight_layout()
+    plt.savefig("figures/lsp_alpha.pdf")
+    plt.show()
