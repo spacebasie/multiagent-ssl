@@ -55,7 +55,7 @@ python main.py \
     --mode 'decentralized' \
     --dataset 'cifar10' \
     --heterogeneity_type 'label_skew_personalized' \
-    --topology 'random' \
+    --topology 'fully_connected' \
     --alpha 0.5 \
     --eval_every 5 \
     --num_classes 10 \
