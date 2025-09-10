@@ -55,12 +55,12 @@ python main.py \
     --mode 'decentralized' \
     --dataset 'cifar10' \
     --heterogeneity_type 'label_skew_personalized' \
-    --topology 'disconnected' \
-    --alpha 0.5 \
+    --topology 'fully_connected' \
+    --alpha 5 \
     --eval_every 5 \
     --num_classes 10 \
     --comm_rounds 200 \
-    --num_agents 15 \
+    --num_agents 5 \
     --local_epochs 1
 
 #For combo train
