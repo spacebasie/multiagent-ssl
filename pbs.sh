@@ -60,7 +60,7 @@ python main.py \
     --eval_every 5 \
     --num_classes 10 \
     --comm_rounds 200 \
-    --num_agents 15 \
+    --num_agents 5 \
     --local_epochs 1
 
 #For combo train

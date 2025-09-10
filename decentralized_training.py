@@ -11,6 +11,7 @@ from network import gossip_average
 import wandb
 from config import KNN_TEMPERATURE, KNN_K
 from torch.utils.data import ConcatDataset, DataLoader
+import copy
 
 
 # In decentralized_training.py
@@ -135,6 +136,29 @@ def decentralized_personalized_training(
 
     print(f"\nAverage Final Personalized Accuracy: {avg_final_personalized_acc:.2f}%")
     print(f"Average Final Global Accuracy: {avg_final_global_acc:.2f}%")
+
+    print("\n--- Final Global Linear Evaluation ---")
+    final_global_results_linear = {}
+    for i in range(num_agents):
+        print(f"Performing linear evaluation for Agent {i}'s model...")
+        # Use a deepcopy to ensure the original model is not modified
+        model_to_eval = copy.deepcopy(agent_models[i])
+
+        g_acc_linear = linear_evaluation(
+            model=model_to_eval,
+            proj_output_dim=proj_input_dim,
+            train_loader=global_train_loader_eval,
+            test_loader=global_test_loader_eval,
+            epochs=eval_epochs,
+            device=device
+        )
+        final_global_results_linear[f"agent_{i}_final_global_linear_acc"] = g_acc_linear
+        wandb.summary[f"agent_{i}_final_global_linear_accuracy"] = g_acc_linear
+
+    avg_final_global_linear_acc = sum(final_global_results_linear.values()) / len(final_global_results_linear)
+    wandb.summary["average_final_global_linear_accuracy"] = avg_final_global_linear_acc
+
+    print(f"\nAverage Final Global Linear Accuracy: {avg_final_global_linear_acc:.2f}%")
 
 
 def evaluate_neighborhood_consensus(

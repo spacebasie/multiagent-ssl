@@ -69,7 +69,7 @@ lsp_100 = pd.read_csv('simulations/lsp_100.csv')
 # federated_df.dropna(subset=['Step', 'eval/global_knn_accuracy'], inplace=True)
 # centralized_df.dropna(subset=['Step', 'eval/knn_accuracy'], inplace=True)
 
-plot = 'lsp_alpha' # 'global accuracy', 'angles', 'learning_curve', 'tsne', 'loss_terms', lsp, method_lsp, lsp_alpha
+plot = 'lsp' # 'global accuracy', 'angles', 'learning_curve', 'tsne', 'loss_terms', lsp, method_lsp, lsp_alpha
 
 # --- Plotting ---
 if plot == 'global accuracy':
@@ -356,28 +356,28 @@ elif plot == 'lsp':
 
     plt.plot(
         lsp5fully['Step'],
-        lsp5fully['decentralized_fully_connected_agents_5_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        lsp5fully['decentralized_fully_connected_agents_5_hetero_label_skew_personalized - eval/avg_global_accuracy'],
         label='5 Agents Fully Connected',
         color='blue'
     )
 
     plt.plot(
         lsp5disc['Step'],
-        lsp5disc['decentralized_disconnected_agents_5_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        lsp5disc['decentralized_disconnected_agents_5_hetero_label_skew_personalized - eval/avg_global_accuracy'],
         label='5 Agents Disconnected',
         color='orange'
     )
 
     plt.plot(
         lsp5rand['Step'],
-        lsp5rand['decentralized_random_agents_5_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        lsp5rand['decentralized_random_agents_5_hetero_label_skew_personalized - eval/avg_global_accuracy'],
         label='5 Agents Random',
         color='green'
     )
 
     plt.plot(
         lsp10fully['Step'],
-        lsp10fully['decentralized_fully_connected_agents_10_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        lsp10fully['decentralized_fully_connected_agents_10_hetero_label_skew_personalized - eval/avg_global_accuracy'],
         label='10 Agents Fully Connected',
         color='blue',
         linestyle='--'
@@ -385,7 +385,7 @@ elif plot == 'lsp':
 
     plt.plot(
         lsp10disc['Step'],
-        lsp10disc['decentralized_disconnected_agents_10_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        lsp10disc['decentralized_disconnected_agents_10_hetero_label_skew_personalized - eval/avg_global_accuracy'],
         label='10 Agents Disconnected',
         color='orange',
         linestyle='--'
@@ -393,7 +393,7 @@ elif plot == 'lsp':
 
     plt.plot(
         lsp10rand['Step'],
-        lsp10rand['decentralized_random_agents_10_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        lsp10rand['decentralized_random_agents_10_hetero_label_skew_personalized - eval/avg_global_accuracy'],
         label='10 Agents Random',
         color='green',
         linestyle='--'
@@ -401,7 +401,7 @@ elif plot == 'lsp':
 
     plt.plot(
         lsp15fully['Step'],
-        lsp15fully['decentralized_fully_connected_agents_15_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        lsp15fully['decentralized_fully_connected_agents_15_hetero_label_skew_personalized - eval/avg_global_accuracy'],
         label='15 Agents Fully Connected',
         color='blue',
         linestyle=':'
@@ -409,7 +409,7 @@ elif plot == 'lsp':
 
     plt.plot(
         lsp15disc['Step'],
-        lsp15disc['decentralized_disconnected_agents_15_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        lsp15disc['decentralized_disconnected_agents_15_hetero_label_skew_personalized - eval/avg_global_accuracy'],
         label='15 Agents Disconnected',
         color='orange',
         linestyle=':'
@@ -417,19 +417,19 @@ elif plot == 'lsp':
 
     plt.plot(
         lsp15rand['Step'],
-        lsp15rand['decentralized_random_agents_15_hetero_label_skew_personalized - eval/avg_personalized_accuracy'],
+        lsp15rand['decentralized_random_agents_15_hetero_label_skew_personalized - eval/avg_global_accuracy'],
         label='15 Agents Random',
         color='green',
         linestyle=':'
     )
 
-    plt.title('P2P For Different Graphs', fontsize=16)
+    plt.title('Different Graphs Learning with High Class Heterogeneity', fontsize=16)
     plt.xlabel('Step', fontsize=14)
     plt.ylabel('k-NN Accuracy (%)', fontsize=14)
     plt.legend(fontsize=10, loc='lower right')
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
-    plt.ylim(40, 75)
-    plt.xlim(0, 200)
+    plt.ylim(30, 60)
+    plt.xlim(5, 200)
     plt.tight_layout()
     plt.savefig("figures/lsp_het.pdf")
     plt.show()
