@@ -51,31 +51,31 @@ echo "Starting Python script..."
 #REMEMBER TO CHECK THE LEARNING RATE!
 
 #For cifar10
-python main.py \
-    --mode 'decentralized' \
-    --dataset 'cifar10' \
-    --heterogeneity_type 'label_skew_personalized' \
-    --topology 'fully_connected' \
-    --alpha 100 \
-    --eval_every 5 \
-    --num_classes 10 \
-    --comm_rounds 200 \
-    --num_agents 5 \
-    --local_epochs 1
+#python main.py \
+#    --mode 'decentralized' \
+#    --dataset 'cifar10' \
+#    --heterogeneity_type 'label_skew_personalized' \
+#    --topology 'fully_connected' \
+#    --alpha 100 \
+#    --eval_every 5 \
+#    --num_classes 10 \
+#    --comm_rounds 200 \
+#    --num_agents 5 \
+#    --local_epochs 1
 
 #For combo train
-#python main.py \
-#  --mode 'decentralized' \
-#  --dataset 'office_home' \
-#  --heterogeneity_type 'combo_domain' \
-#  --topology 'fully_connected' \
-#  --num_agents 4 \
-#  --num_classes 10 \
-#  --comm_rounds 200 \
-#  --alpha 100 \
-#  --local_epochs 1 \
-#  --eval_every 5 \
-#  --alignment_strength 25
+python main.py \
+  --mode 'decentralized' \
+  --dataset 'office_home' \
+  --heterogeneity_type 'combo_domain' \
+  --topology 'fully_connected' \
+  --num_agents 8 \
+  --num_classes 10 \
+  --comm_rounds 200 \
+  --alpha 100 \
+  --local_epochs 1 \
+  --eval_every 5 \
+  --alignment_strength 25
 
 #Centralized Run
 #python main.py \

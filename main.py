@@ -489,7 +489,6 @@ def main():
                 )
             final_model_to_eval = None
 
-
         # Key method for Office Home Decentralized
         elif args.heterogeneity_type == 'combo_domain':
             wandb.run.name = f"combo_domain_{args.topology}_agents_{args.num_agents}"

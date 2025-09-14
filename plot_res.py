@@ -69,7 +69,7 @@ lsp_100 = pd.read_csv('simulations/lsp_100.csv')
 # federated_df.dropna(subset=['Step', 'eval/global_knn_accuracy'], inplace=True)
 # centralized_df.dropna(subset=['Step', 'eval/knn_accuracy'], inplace=True)
 
-plot = 'lsp' # 'global accuracy', 'angles', 'learning_curve', 'tsne', 'loss_terms', lsp, method_lsp, lsp_alpha
+plot = 'fed_het' # 'global accuracy', 'angles', 'learning_curve', 'tsne', 'loss_terms', lsp, method_lsp, lsp_alpha
 
 # --- Plotting ---
 if plot == 'global accuracy':
@@ -92,12 +92,13 @@ if plot == 'global accuracy':
     )
 
     # --- Customize the Plot ---
-    plt.title('Federated vs. Centralized Training Accuracy')
-    plt.xlabel('Step')
-    plt.ylabel('k-NN Accuracy (%)')
+    plt.title('Federated vs. Centralized Training Accuracy', fontsize=16)
+    plt.xlabel('Step', fontsize=14)
+    plt.ylabel('k-NN Accuracy (%)', fontsize=14)
     plt.legend() # Display the labels
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.ylim(40, 80)
+    plt.xlim(5, 200)
     plt.tight_layout()
     plt.savefig('figures/fed_vs_centr.pdf')
 
@@ -320,6 +321,7 @@ elif plot == 'loss_terms':
     plt.show()
 
 elif plot == 'fed_het':
+    plt.figure(figsize=(10, 6))
     plt.plot(
         fed_alpha05['Step'],
         fed_alpha05['federated_agents_5_dataset_cifar10 - eval/knn_accuracy'],
@@ -347,6 +349,7 @@ elif plot == 'fed_het':
     plt.legend(fontsize=12, loc='upper left')
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.ylim(45, 70)
+    plt.xlim(5, 200)
     plt.tight_layout()
     plt.savefig("figures/fed_het.pdf")
     plt.show()
@@ -590,7 +593,7 @@ elif plot == 'lsp_alpha':
         color='green'
     )
 
-    plt.title('Effect of Data Heterogeneity on Naive Performance', fontsize=16)
+    plt.title('Effect of Data Heterogeneity on Naive P2P Performance', fontsize=16)
     plt.xlabel('Step', fontsize=14)
     plt.ylabel('k-NN Accuracy (%)', fontsize=14)
     plt.legend(fontsize=12, loc='lower right')
