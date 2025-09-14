@@ -68,7 +68,7 @@ python main.py \
   --mode 'decentralized' \
   --dataset 'office_home' \
   --heterogeneity_type 'combo_domain' \
-  --topology 'disconnected' \
+  --topology 'random' \
   --num_agents 8 \
   --num_classes 10 \
   --comm_rounds 200 \
